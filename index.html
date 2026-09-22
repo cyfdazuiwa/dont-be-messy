@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DON'T BE MESSY — 三个对抗混乱的互动实验</title>
+<style>
+  :root{
+    --bg:#F4F2ED;
+    --fg:#111111;
+    --pad:clamp(20px,4vw,64px);
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    font-family:"Futura","Futura PT","Avenir Next","Century Gothic","PingFang SC","Microsoft YaHei",sans-serif;
+    background:var(--bg);color:var(--fg);
+    overflow:hidden;
+    letter-spacing:.02em;
+  }
+
+  /* ============ 滚动结构：整页吸附 ============ */
+  .deck{
+    height:100vh;height:100dvh;
+    overflow-y:scroll;
+    scroll-snap-type:y mandatory;
+    scrollbar-width:none;
+  }
+  .deck::-webkit-scrollbar{display:none}
+  .page{
+    position:relative;
+    height:100vh;height:100dvh;
+    scroll-snap-align:start;scroll-snap-stop:always;
+    overflow:hidden;
+  }
+
+  /* ============ 固定框架：顶栏 / 侧导航 ============ */
+  .topbar{
+    position:fixed;inset:0 0 auto 0;z-index:50;
+    display:flex;justify-content:space-between;align-items:center;
+    padding:18px var(--pad);
+    pointer-events:none;
+    font-size:12px;font-weight:700;letter-spacing:.28em;text-transform:uppercase;
+  }
+  .topbar .mark{display:flex;align-items:center;gap:10px}
+  .topbar .dot{width:10px;height:10px;border-radius:50%;background:currentColor;opacity:.85}
+  .topbar .right{opacity:.55}
+
+  .rail{
+    position:fixed;right:calc(var(--pad) * .45);top:50%;transform:translateY(-50%);
+    z-index:50;display:flex;flex-direction:column;gap:16px;
+  }
+  .rail a{
+    position:relative;width:34px;height:34px;display:grid;place-items:center;
+    text-decoration:none;color:var(--fg);
+  }
+  .rail a i{
+    width:9px;height:9px;background:transparent;
+    border:1.5px solid var(--fg);border-radius:50%;
+    transition:background .25s,transform .25s;
+  }
+  .rail a.on i{background:var(--fg);transform:scale(1.3)}
+  .rail a span{
+    position:absolute;right:38px;top:50%;transform:translateY(-50%);
+    font-size:10px;font-weight:700;letter-spacing:.2em;
+    opacity:0;transition:opacity .2s;white-space:nowrap;text-transform:uppercase;
+  }
+  .rail a:hover span{opacity:.7}
+
+  /* ============ 通用 ============ */
+  .no-line{
+    display:flex;align-items:center;gap:12px;
+    font-size:12px;font-weight:700;letter-spacing:.3em;text-transform:uppercase;opacity:.75;
+  }
+  .no-line::before{content:"";width:28px;height:2px;background:currentColor}
+  .tag{
+    display:inline-block;border:1px solid color-mix(in srgb,var(--fg) 38%,transparent);
+    padding:5px 12px;font-size:11px;font-weight:600;letter-spacing:.18em;
+    text-transform:uppercase;opacity:.9;
+  }
+  .btn{
+    display:inline-flex;align-items:center;gap:10px;
+    background:var(--fg);color:var(--bg);text-decoration:none;
+    padding:12px 22px;font-size:12px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;
+    transition:transform .15s,opacity .15s;
+  }
+  .btn:hover{transform:translateY(-2px);opacity:.88}
+  .hint{font-size:11px;letter-spacing:.12em;opacity:.55;line-height:1.8}
+
+  /* ============ P0 封面 ============ */
+  .cover{display:grid;grid-template-columns:1fr}
+  .cover-inner{
+    padding:calc(var(--pad) + 40px) var(--pad) var(--pad);
+    display:flex;flex-direction:column;justify-content:center;position:relative;z-index:2;height:100%;
+  }
+  .kicker{font-size:13px;font-weight:700;letter-spacing:.34em;text-transform:uppercase;margin-bottom:3.5vh;opacity:.8}
+  h1{
+    font-size:clamp(72px,16vh,190px);line-height:.92;font-weight:800;
+    text-transform:uppercase;letter-spacing:-.02em;
+  }
+  h1 .row{display:block}
+  h1 .mess{position:relative;display:inline-block}
+  h1 .mess s{
+    position:absolute;left:-.02em;right:-.02em;top:50%;height:.06em;
+    background:currentColor;transform:rotate(-2.2deg);
+  }
+  .cover-sub{margin-top:4.5vh;display:flex;align-items:center;gap:18px}
+  .cover-sub .bar{width:72px;height:2px;background:currentColor;flex:none;opacity:.8}
+  .cover-sub p{font-size:clamp(14px,2vh,17px);letter-spacing:.24em;font-weight:600}
+  .cover-meta{
+    margin-top:auto;padding-top:4vh;display:flex;justify-content:space-between;align-items:flex-end;
+    font-size:11px;font-weight:700;letter-spacing:.26em;text-transform:uppercase;opacity:.55;
+  }
+  .scroll-hint{
+    position:absolute;left:var(--pad);bottom:26px;z-index:3;
+    display:flex;align-items:center;gap:12px;
+    font-size:11px;font-weight:700;letter-spacing:.3em;text-transform:uppercase;
+  }
+  .scroll-hint .arrow{animation:dip 1.6s ease-in-out infinite;font-size:15px}
+  @keyframes dip{0%,100%{transform:translateY(-3px)}50%{transform:translateY(4px)}}
+
+  /* ============ 项目页 ============ */
+  .proj{display:grid;grid-template-columns:minmax(320px,.66fr) 1.34fr}
+  .proj-info{
+    padding:calc(var(--pad) + 44px) 36px var(--pad) var(--pad);
+    display:flex;flex-direction:column;position:relative;z-index:2;
+  }
+  .proj h2{
+    margin-top:2vh;
+    font-size:clamp(40px,7.4vh,80px);line-height:1;text-transform:uppercase;
+    font-weight:800;letter-spacing:-.015em;
+  }
+  .proj h2 .cn{
+    display:block;font-size:clamp(15px,2.1vh,19px);font-weight:600;
+    letter-spacing:.34em;margin-top:2vh;text-transform:none;opacity:.8;
+  }
+  .proj-desc{
+    margin:3vh 0;font-size:clamp(14px,1.9vh,16px);line-height:1.95;
+    letter-spacing:.05em;max-width:36em;
+  }
+  .proj-desc b{font-weight:700;border-bottom:2px solid currentColor;padding-bottom:1px}
+  .meta{margin-top:auto;display:flex;flex-direction:column;gap:16px}
+  .tags{display:flex;flex-wrap:wrap;gap:8px}
+  .proj-act{display:flex;gap:10px;flex-wrap:wrap}
+
+  .proj-stage{
+    position:relative;margin:calc(var(--pad) + 44px) var(--pad) var(--pad) 0;
+    background:var(--bg);
+    border:1px solid color-mix(in srgb,var(--fg) 22%,transparent);
+    border-radius:14px;overflow:hidden;
+    box-shadow:0 24px 70px rgba(0,0,0,.16);
+    display:flex;flex-direction:column;min-height:0;
+  }
+  .stage-head{
+    display:flex;justify-content:space-between;align-items:center;
+    border-bottom:1px solid color-mix(in srgb,var(--fg) 14%,transparent);
+    padding:10px 16px;
+    font-size:11px;font-weight:700;letter-spacing:.26em;text-transform:uppercase;opacity:.95;
+  }
+  .stage-head .name{opacity:.65}
+  .head-right{display:flex;align-items:center;gap:12px}
+  .fs-btn{
+    font-family:inherit;font-weight:700;font-size:11px;letter-spacing:.18em;text-transform:uppercase;
+    background:transparent;color:var(--fg);
+    border:1px solid color-mix(in srgb,var(--fg) 45%,transparent);
+    padding:6px 14px;cursor:pointer;
+    transition:background .15s,color .15s,border-color .15s;
+  }
+  .fs-btn:hover{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+  .stage-body{position:relative;flex:1;min-height:0}
+  .stage-body iframe{position:absolute;inset:0;width:100%;height:100%;border:0;display:block;background:#fff}
+
+  .page-foot{
+    position:absolute;left:var(--pad);right:var(--pad);bottom:14px;z-index:3;
+    display:flex;justify-content:space-between;
+    font-size:11px;font-weight:700;letter-spacing:.28em;text-transform:uppercase;opacity:.45;
+  }
+
+  /* ============ 全屏 ============ */
+  .proj-stage:fullscreen{
+    margin:0;border-radius:0;box-shadow:none;background:var(--bg);
+    width:100vw;height:100vh;max-width:none;max-height:none;
+  }
+  .proj-stage:-webkit-full-screen{margin:0;border-radius:0;box-shadow:none;background:var(--bg);width:100vw;height:100vh}
+
+  /* ============ 窄屏 ============ */
+  @media (max-width:900px){
+    .proj{grid-template-columns:1fr;grid-template-rows:auto 1fr}
+    .proj-info{padding:64px var(--pad) 10px}
+    .proj h2{font-size:clamp(34px,6vh,52px)}
+    .proj-desc{margin:1.4vh 0;font-size:13px}
+    .meta{margin-top:1vh;gap:10px}
+    .proj-stage{margin:10px var(--pad) 44px}
+    .rail{display:none}
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="mark"><span class="dot"></span><span>DON'T BE MESSY</span></div>
+  <div class="right">INTERACTIVE ARCHIVE · N°01—03</div>
+</header>
+
+<nav class="rail" id="rail">
+  <a href="#s0" data-i="0"><span>COVER</span><i></i></a>
+  <a href="#s1" data-i="1"><span>POP SHUTTER</span><i></i></a>
+  <a href="#s2" data-i="2"><span>MESS → CALM</span><i></i></a>
+  <a href="#s3" data-i="3"><span>ANXIETY TUG</span><i></i></a>
+</nav>
+
+<main class="deck" id="deck">
+
+  <!-- ============ 00 封面 ============ -->
+  <section class="page cover" id="s0">
+    <div class="cover-inner">
+      <p class="kicker">THREE INTERACTIVE EXPERIMENTS · 三个对抗混乱的互动实验</p>
+      <h1>
+        <span class="row">DON'T</span>
+        <span class="row">BE</span>
+        <span class="row"><span class="mess">MESSY<s></s></span></span>
+      </h1>
+      <div class="cover-sub">
+        <span class="bar"></span>
+        <p>乱是输入，平静是交互</p>
+      </div>
+      <div class="cover-meta">
+        <span>POP SHUTTER / MESS-TO-CALM / ANXIETY TUG</span>
+        <span>2026</span>
+      </div>
+    </div>
+    <div class="scroll-hint"><span class="arrow">↓</span> SCROLL / 向下滑动</div>
+  </section>
+
+  <!-- ============ 01 POP SHUTTER ============ -->
+  <section class="page proj" id="s1">
+    <div class="proj-info">
+      <p class="no-line">PROJECT 01 / 03</p>
+      <h2>POP<br>SHUTTER<span class="cn">波普快门 · 快门替你冷静</span></h2>
+      <p class="proj-desc">
+        打开摄像头，画面被实时渲染成沃霍尔式波普宫格；右侧的<b>焦躁指数</b>持续监测你的头动与微表情——
+        一旦冲过阈值，快门自动落下，把最躁动的瞬间定格成波普画。
+        <b>混乱不可怕，拍下来就好了。</b>
+      </p>
+      <div class="meta">
+        <div class="tags">
+          <span class="tag">face-api.js</span><span class="tag">Canvas</span><span class="tag">WebAudio</span><span class="tag">纯本地·不上传</span>
+        </div>
+        <div class="proj-act">
+          <a class="btn" href="https://github.com/cyfdazuiwa/pop-shutter" target="_blank" rel="noopener">GITHUB ↗</a>
+        </div>
+        <p class="hint">※ 需要摄像头权限 · 需通过本地服务打开（双击 start_demo.command）· 在画面中允许摄像头后晃一晃试试</p>
+      </div>
+    </div>
+    <div class="proj-stage">
+      <div class="stage-head"><span class="name">POP-SHUTTER / 波普快门</span><span class="head-right"><button class="fs-btn" type="button" data-fs>⛶ 全屏</button></span></div>
+      <div class="stage-body">
+        <iframe src="pop-shutter/index.html" title="pop-shutter 波普快门" loading="lazy"
+                allow="camera; microphone; fullscreen" allowfullscreen></iframe>
+      </div>
+    </div>
+    <div class="page-foot"><span>DON'T BE MESSY</span><span>01 — CAMERA VS CHAOS</span></div>
+  </section>
+
+  <!-- ============ 02 MESS → CALM ============ -->
+  <section class="page proj" id="s2">
+    <div class="proj-info">
+      <p class="no-line">PROJECT 02 / 03</p>
+      <h2>MESS →<br>CALM<span class="cn">从混乱到平静 · 三幕小游戏</span></h2>
+      <p class="proj-desc">
+        三幕交互，一条从乱到静的路：第一幕<b>点击红色 calm</b>，从乱麻中找到平静；
+        第二幕用方向键射击，<b>打掉 mess、命中 calm</b> 通关；第三幕按住黑点拖动，
+        <b>把三排乱线亲手拉直</b>。通关时，所有杂乱归于笔直与安静。
+      </p>
+      <div class="meta">
+        <div class="tags">
+          <span class="tag">单文件</span><span class="tag">零依赖</span><span class="tag">Canvas</span><span class="tag">键盘 + 鼠标</span>
+        </div>
+        <div class="proj-act">
+          <a class="btn" href="https://github.com/1842690025-hue/mess-to-calm" target="_blank" rel="noopener">GITHUB ↗</a>
+        </div>
+        <p class="hint">※ 玩法：先点击画面获得键盘焦点 · 第一幕点击 CALM / 第二幕 ←→ 移动 + 空格射击 / 第三幕按住黑点向右拖</p>
+      </div>
+    </div>
+    <div class="proj-stage">
+      <div class="stage-head"><span class="name">MESS-TO-CALM / 三幕剧</span><span class="head-right"><button class="fs-btn" type="button" data-fs>⛶ 全屏</button></span></div>
+      <div class="stage-body">
+        <iframe src="mess-to-calm/calm_interactive.html" title="mess-to-calm 从混乱到平静" loading="lazy"
+                allow="fullscreen" allowfullscreen></iframe>
+      </div>
+    </div>
+    <div class="page-foot"><span>DON'T BE MESSY</span><span>02 — TIDY THE LINES</span></div>
+  </section>
+
+  <!-- ============ 03 ANXIETY TUG ============ -->
+  <section class="page proj" id="s3">
+    <div class="proj-info">
+      <p class="no-line">PROJECT 03 / 03</p>
+      <h2>ANXIETY<br>TUG<span class="cn">焦虑拉扯 · 把注意力拉回中心</span></h2>
+      <p class="proj-desc">
+        画布中央是黑色安全圈，你控制的<b>小红点</b>被四方涌来的蓝色波形不断向外拉扯——
+        按住它、拖住它，<b>抵抗外力</b>。留在圈内即平静，一旦出圈，整个世界泛红、螺旋狂转。
+        连续平静 30 秒点亮一圈进度，看看你的平静率能到多少。
+      </p>
+      <div class="meta">
+        <div class="tags">
+          <span class="tag">Canvas 2D</span><span class="tag">原生 JS</span><span class="tag">零依赖</span><span class="tag">本地最佳纪录</span>
+        </div>
+        <div class="proj-act">
+          <a class="btn" href="https://github.com/hzhuangzhen1001-gif/anxiety-tug" target="_blank" rel="noopener">GITHUB ↗</a>
+        </div>
+        <p class="hint">※ 玩法：按住红点拖动抵抗拉力 · 出圈会进入焦虑状态 · 快捷键 R 重新开始</p>
+      </div>
+    </div>
+    <div class="proj-stage">
+      <div class="stage-head"><span class="name">ANXIETY-TUG / 焦虑拉扯</span><span class="head-right"><button class="fs-btn" type="button" data-fs>⛶ 全屏</button></span></div>
+      <div class="stage-body">
+        <iframe src="anxiety-tug/index.html" title="anxiety-tug 焦虑拉扯" loading="lazy"
+                allow="fullscreen" allowfullscreen></iframe>
+      </div>
+    </div>
+    <div class="page-foot"><span>DON'T BE MESSY</span><span>03 — BACK TO CENTER</span></div>
+  </section>
+
+</main>
+
+<script>
+  const deck = document.getElementById('deck');
+  const links = [...document.querySelectorAll('#rail a')];
+  const pages = [...document.querySelectorAll('.page')];
+
+  // 侧边导航随滚动高亮
+  links.forEach(a => a.addEventListener('click', e => {
+    e.preventDefault();
+    document.getElementById(a.getAttribute('href').slice(1))
+      .scrollIntoView({behavior:'smooth'});
+  }));
+  const io = new IntersectionObserver(es => {
+    es.forEach(en => {
+      if (en.isIntersecting) {
+        const i = pages.indexOf(en.target);
+        links.forEach((a, j) => a.classList.toggle('on', j === i));
+      }
+    });
+  }, {root: deck, threshold: 0.55});
+  pages.forEach(p => io.observe(p));
+
+  // 支持 #s0~#s3 直接定位（滚动容器在 .deck 内，锚点需手动落位）
+  function jumpToHash(){
+    const el = document.querySelector(location.hash || null);
+    if (el && pages.includes(el)) deck.scrollTop = el.offsetTop;
+  }
+  window.addEventListener('load', jumpToHash);
+  window.addEventListener('hashchange', jumpToHash);
+
+  // 背景固定主题色（米白底 · 深色字），不再随作品变色
+  // （--bg / --fg 直接使用 :root 中的静态值）
+
+  // 演示窗口全屏切换（退出全屏会重置内部滚动，需记录并恢复）
+  const fsStages = [...document.querySelectorAll('[data-fs]')].map(btn => ({
+    btn,
+    stage: btn.closest('.proj-stage'),
+  }));
+  let savedScroll = 0;
+  function fsLabel(on){ return on ? '✕ 退出全屏' : '⛶ 全屏'; }
+  fsStages.forEach(({btn, stage}) => {
+    btn.addEventListener('click', () => {
+      if (document.fullscreenElement) {
+        document.exitFullscreen();
+      } else {
+        savedScroll = deck.scrollTop;
+        if (stage.requestFullscreen) {
+          stage.requestFullscreen().catch(() => {});
+        } else if (stage.webkitRequestFullscreen) {
+          stage.webkitRequestFullscreen();
+        }
+      }
+    });
+  });
+  document.addEventListener('fullscreenchange', () => {
+    const on = !!document.fullscreenElement;
+    fsStages.forEach(({btn, stage}) => {
+      btn.textContent = fsLabel(on && document.fullscreenElement === stage);
+    });
+    if (!on) requestAnimationFrame(() => { deck.scrollTop = savedScroll; });
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'f' && !e.metaKey && !e.ctrlKey && !e.altKey) {
+      const view = fsStages.find(({stage}) => {
+        const r = stage.getBoundingClientRect();
+        return r.top < innerHeight / 2 && r.bottom > innerHeight / 2;
+      });
+      if (view) view.btn.click();
+    }
+  });
+</script>
+</body>
+</html>
