@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>焦虑拉扯 · Anxiety Tug</title>
+<style>
+  :root {
+    --bg: #17181c;
+    --panel: #22242a;
+    --text: #d8dae0;
+    --dim: #8a8d96;
+    --accent: #f7a41d;
+    --danger: #e0483e;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font: 14px/1.5 -apple-system, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100%;
+  }
+  header { width: 100%; max-width: 1060px; padding: 18px 24px 10px; }
+  header h1 { font-size: 18px; font-weight: 600; }
+  header h1 .en { color: var(--dim); font-weight: 400; font-size: 14px; margin-left: 8px; }
+  header .meta { color: var(--dim); font-size: 12.5px; margin-top: 2px; }
+  .stage {
+    position: relative;
+    width: min(1060px, calc(100vw - 32px));
+    height: min(640px, calc(100vh - 190px));
+    min-height: 460px;
+    background: #faf9f5;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 8px 40px rgba(0,0,0,.55);
+    flex: 0 0 auto;
+  }
+  canvas { width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; }
+  canvas.grabbing { cursor: grabbing; }
+
+  /* 左上统计面板 */
+  .hud-stats {
+    position: absolute; top: 12px; left: 14px;
+    background: rgba(23,24,28,.82);
+    color: #e8e9ec;
+    border-radius: 8px;
+    padding: 9px 12px;
+    font-size: 12px; line-height: 1.75;
+    pointer-events: none;
+    font-variant-numeric: tabular-nums;
+    backdrop-filter: blur(3px);
+    min-width: 168px;
+  }
+  .hud-stats b { font-weight: 600; margin-left: 6px; }
+  #stMood.calm { color: #7fd18b; }
+  #stMood.anxious { color: #ff8d80; }
+  .bar { display: inline-block; width: 86px; height: 6px; background: #3a3d46; border-radius: 3px; overflow: hidden; vertical-align: middle; margin-left: 6px; }
+  .bar i { display: block; height: 100%; border-radius: 3px; transition: width .18s linear; }
+  #hpBar i { background: #7fd18b; }
+  #hpBar.low i { background: var(--danger); }
+  #lvBar i { background: var(--accent); }
+
+  /* 深呼吸按钮 */
+  #breathBtn {
+    position: absolute; right: 18px; bottom: 18px;
+    width: 74px; height: 74px; border-radius: 50%;
+    border: 2px solid #4a5fd9;
+    background: radial-gradient(circle at 50% 40%, rgba(74,95,217,.16), rgba(74,95,217,.05));
+    color: #33418f;
+    font-size: 13px; font-weight: 600; letter-spacing: 2px;
+    cursor: pointer;
+    user-select: none; -webkit-user-select: none;
+    touch-action: none;
+    display: none;
+  }
+  #breathBtn small { display: block; font-size: 9px; letter-spacing: 0; color: var(--dim); margin-top: 2px; }
+  #breathBtn.active {
+    border-color: #7fd18b; color: #2f7d4f;
+    background: radial-gradient(circle at 50% 40%, rgba(127,209,139,.35), rgba(127,209,139,.08));
+    box-shadow: 0 0 24px rgba(127,209,139,.45);
+    animation: breathPulse 2.6s ease-in-out infinite;
+  }
+  #breathBtn.cooldown { border-color: #55575e; color: #8a8d96; background: rgba(34,36,42,.7); }
+  @keyframes breathPulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.07); } }
+
+  /* 覆盖层(菜单 / 结算) */
+  .overlay {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(23,24,28,.45);
+    transition: opacity .45s ease;
+  }
+  .overlay.hidden { opacity: 0; pointer-events: none; }
+  .overlay .card {
+    background: rgba(34,36,42,.96);
+    border: 1px solid #3a3d46;
+    border-radius: 12px;
+    padding: 24px 30px;
+    max-width: 500px;
+    text-align: center;
+    color: #e8e9ec;
+    font-size: 13.5px;
+  }
+  .overlay .card h2 { font-size: 20px; font-weight: 650; margin-bottom: 10px; letter-spacing: 1px; }
+  .overlay .card h2 .en { color: var(--dim); font-weight: 400; font-size: 13px; margin-left: 6px; letter-spacing: 0; }
+  .overlay .card p { margin: 7px 0; }
+  .overlay .card .quote {
+    color: #f2d38b;
+    font-size: 15px;
+    margin: 12px 0;
+    letter-spacing: .5px;
+  }
+  .overlay .card .l2 { color: var(--dim); font-size: 12px; }
+  .overlay .card b { color: #fff; }
+  .overlay .card .btnrow { margin-top: 16px; display: flex; gap: 10px; justify-content: center; }
+  .overlay .card button {
+    background: var(--accent);
+    color: #1c1c1e;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 28px;
+    font-size: 14px; font-weight: 600;
+    cursor: pointer;
+  }
+  .overlay .card button.ghost { background: var(--panel); color: var(--text); border: 1px solid #43464e; }
+  .overlay .card button:hover { filter: brightness(1.08); }
+
+  footer { color: var(--dim); font-size: 12px; padding: 10px 24px 20px; max-width: 1060px; }
+  footer code { background: var(--panel); border-radius: 4px; padding: 1px 6px; font-size: 11px; }
+</style>
+</head>
+<body>
+  <header>
+    <h1>焦虑拉扯<span class="en">Anxiety Tug</span></h1>
+    <div class="meta">一个关于"把注意力拉回中心"的小游戏 · 三关递进 · 长按空格深呼吸</div>
+  </header>
+
+  <div class="stage" id="stage">
+    <canvas id="c"></canvas>
+    <div class="hud-stats">
+      <div>状态<b id="stMood" class="calm">平静</b></div>
+      <div>心态值<span class="bar" id="hpBar"><i style="width:100%"></i></span><b id="stHp">100</b></div>
+      <div>关卡<b id="stLevel">一 · 微风</b></div>
+      <div>关内进度<span class="bar" id="lvBar"><i style="width:0%"></i></span><b id="stLvp">0%</b></div>
+      <div>平静率<b id="stRate">--</b> · 坚持<b id="stTime">0 s</b></div>
+    </div>
+    <button id="breathBtn">呼 吸<small>长按 / 空格</small></button>
+    <div class="overlay" id="overlay"></div>
+  </div>
+
+  <footer>
+    交互：<code>按住拖拽</code> 控制红点 · <code>长按空格</code> 或 <code>长按呼吸钮</code> 深呼吸(3 秒内拉力减半) ·
+    <code>R</code> 重新开始 · 心态耗尽会被焦虑吞没,撑过每关时长即通过
+  </footer>
+
+<script>
+"use strict";
+(() => {
+  const canvas = document.getElementById("c");
+  const stage  = document.getElementById("stage");
+  const overlay = document.getElementById("overlay");
+  const ctx = canvas.getContext("2d");
+
+  // ---------- 尺寸 ----------
+  let W = 0, H = 0, DPR = 1;
+  function resize() {
+    DPR = Math.min(window.devicePixelRatio || 1, 2);
+    W = stage.clientWidth; H = stage.clientHeight;
+    canvas.width = Math.round(W * DPR);
+    canvas.height = Math.round(H * DPR);
+  }
+  new ResizeObserver(resize).observe(stage);
+  resize();
+
+  const rand = (a, b) => a + Math.random() * (b - a);
+  const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+  const lerp = (a, b, t) => a + (b - a) * t;
+
+  // ---------- 颜色（平静 ↔ 焦虑 插值） ----------
+  function hex2rgb(h) {
+    return [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
+  }
+  function mix(c1, c2, t) {
+    return `rgb(${Math.round(c1[0]+(c2[0]-c1[0])*t)},${Math.round(c1[1]+(c2[1]-c1[1])*t)},${Math.round(c1[2]+(c2[2]-c1[2])*t)})`;
+  }
+  const C = {
+    bg:     [hex2rgb("#faf9f5"), hex2rgb("#f7ece7")],
+    circle: [hex2rgb("#1c1c1e"), hex2rgb("#d2372c")],
+    wave:   [hex2rgb("#4353d9"), hex2rgb("#e0483e")],
+    dash:   [hex2rgb("#9a9ea6"), hex2rgb("#d2372c")],
+    spiral: [hex2rgb("#6a6d75"), hex2rgb("#8c4038")],
+    dot:    [hex2rgb("#e0301e"), hex2rgb("#a81f14")],
+    ripple: [hex2rgb("#4a5fd9"), hex2rgb("#7fd18b")],
+  };
+
+  // ---------- 关卡 ----------
+  const LEVELS = [
+    { name: "一 · 微风", en: "Breeze",  dur: 30, pull: 0.72, r0: 1.00, r1: 1.00,
+      surgeIv: [2.4, 4.5], surgePw: [0.30, 0.55], gust: 0.60, twin: false, drain: 18 },
+    { name: "二 · 涌浪", en: "Surge",   dur: 40, pull: 1.00, r0: 0.90, r1: 0.90,
+      surgeIv: [1.5, 3.0], surgePw: [0.45, 0.85], gust: 0.95, twin: false, drain: 22 },
+    { name: "三 · 风暴", en: "Tempest", dur: 45, pull: 1.28, r0: 0.86, r1: 0.62,
+      surgeIv: [1.0, 2.1], surgePw: [0.60, 1.10], gust: 1.30, twin: true,  drain: 26 },
+  ];
+  const QUOTE_WIN = [
+    "你已学会与风共处,而不是对抗整片海洋。",
+    "呼吸之间,波澜自平。",
+    "把注意力带回此刻 —— 这就是全部的答案。",
+    "风暴终会过去,而你一直都在。",
+  ];
+  const QUOTE_LOSE = [
+    "被拉走也没关系。休息一下,再回来就好。",
+    "焦虑不是敌人,它只是提醒你:该深呼吸了。",
+    "每一次回来,都比上一次更熟练。",
+    "允许自己失控片刻,也是一种温柔。",
+  ];
+
+  // ---------- 游戏状态 ----------
+  const game = {
+    state: "menu",       // menu | playing | clear | win | lose
+    levelIdx: 0,
+    levelT: 0,
+    clearAuto: 0,
+    pos: { x: 0, y: 0 }, vel: { x: 0, y: 0 },
+    pointer: { x: 0, y: 0, down: false, near: false },
+    stress: 0, shake: 0, flash: 0,
+    hp: 100,
+    breath: { held: false, mult: 1, cd: 0, rip: 0 },
+    ripples: [],
+    waves: [], spirals: [],
+    totalTime: 0, insideTime: 0,
+    lvInside: 0, lvTotal: 0,
+    streak: 0, exits: 0,
+    Rcur: 150, _wasInside: true,
+  };
+
+  const cfgOf = () => LEVELS[game.levelIdx];
+  function baseR() { return clamp(Math.min(W, H) * 0.19, 105, 185); }
+  function safeRTarget() {
+    const cfg = cfgOf();
+    const k = clamp(game.levelT / cfg.dur, 0, 1);
+    return baseR() * lerp(cfg.r0, cfg.r1, k);
+  }
+  function center() { return { x: W / 2, y: H / 2 }; }
+
+  function initWaves() {
+    game.waves = ["top", "bottom", "left", "right"].map(side => ({
+      side, ph: rand(0, 6.28), freq: rand(0.018, 0.03), spd: rand(1.8, 3.0),
+      amp: 0.3, surge: 0, next: rand(1.5, 3.5),
+    }));
+  }
+  function initSpirals() {
+    game.spirals = [
+      { r: 0.62, turns: 3.0, dir:  1, spd: 1.00, ph: rand(0, 6.28), rot: rand(0, 6.28), jit: 0 },
+      { r: 0.46, turns: 2.2, dir: -1, spd: 1.45, ph: rand(0, 6.28), rot: rand(0, 6.28), jit: 0 },
+      { r: 0.78, turns: 3.8, dir: -1, spd: 0.70, ph: rand(0, 6.28), rot: rand(0, 6.28), jit: 0 },
+    ];
+  }
+  function anchorOf(w) {
+    const m = 34;
+    switch (w.side) {
+      case "top":    return { x: W / 2, y: m };
+      case "bottom": return { x: W / 2, y: H - m };
+      case "left":   return { x: m, y: H / 2 };
+      case "right":  return { x: W - m, y: H / 2 };
+    }
+  }
+
+  // ---------- 状态机 ----------
+  const DEBUG = location.search.includes("debug");
+
+  function loadLevel(idx) {
+    game.levelIdx = idx;
+    game.levelT = 0;
+    game.hp = 100;
+    game.pos.x = W / 2; game.pos.y = H / 2;
+    game.vel.x = 0; game.vel.y = 0;
+    game.stress = 0; game.shake = 0; game.flash = 0;
+    game.streak = 0; game._wasInside = true;
+    game.lvInside = 0; game.lvTotal = 0;
+    game.breath = { held: false, mult: 1, cd: 0, rip: 0 };
+    game.ripples.length = 0;
+    game.Rcur = safeRTarget();
+    initWaves();
+    game.state = "playing";
+    overlay.classList.add("hidden");
+    breathBtn.style.display = "block";
+  }
+  function startRun() {
+    game.totalTime = 0; game.insideTime = 0; game.exits = 0;
+    loadLevel(0);
+  }
+  function endLevel(cleared) {
+    if (cleared) {
+      game.hp = Math.min(100, game.hp + 35);
+      if (game.levelIdx < LEVELS.length - 1) {
+        game.state = "clear";
+        game.clearAuto = 6;
+        showClear();
+      } else {
+        game.state = "win";
+        showEnd(true);
+      }
+    } else {
+      game.state = "lose";
+      if (game.streak > 0) game.streak = 0;
+      showEnd(false);
+    }
+  }
+
+  // ---------- 交互 ----------
+  const breathBtn = document.getElementById("breathBtn");
+  canvas.addEventListener("pointerdown", (e) => {
+    ptr(e);
+    game.pointer.down = true;
+    canvas.setPointerCapture(e.pointerId);
+    canvas.classList.add("grabbing");
+  });
+  canvas.addEventListener("pointermove", ptr);
+  const release = () => { game.pointer.down = false; canvas.classList.remove("grabbing"); };
+  canvas.addEventListener("pointerup", release);
+  canvas.addEventListener("pointercancel", release);
+  function ptr(e) {
+    const r = canvas.getBoundingClientRect();
+    game.pointer.x = e.clientX - r.left;
+    game.pointer.y = e.clientY - r.top;
+  }
+
+  // 深呼吸:长按空格 / 长按按钮(区分触发来源,避免误取消)
+  function breathDown(src) {
+    if (game.state !== "playing" || game.breath.cd > 0 || game.breath.held) return;
+    game.breath.held = true;
+    game.breath.src = src;
+    spawnRipple(0.55);
+  }
+  function breathUp(src) {
+    if (!game.breath.held || game.breath.src !== src) return;
+    game.breath.held = false;
+    if (game.breath.mult < 0.9) game.breath.cd = 5;
+  }
+  breathBtn.addEventListener("pointerdown", (e) => { e.preventDefault(); breathDown("btn"); });
+  breathBtn.addEventListener("pointerup", () => breathUp("btn"));
+  breathBtn.addEventListener("pointercancel", () => breathUp("btn"));
+
+  window.addEventListener("keydown", (e) => {
+    if (e.code === "Space") {
+      e.preventDefault();
+      if (e.repeat) return;
+      DEBUG ? (game.breath.held = !game.breath.held) : breathDown("key");
+    } else if (e.code === "KeyR") {
+      startRun();
+    } else if (DEBUG && e.code === "KeyN") {
+      if (game.state === "playing") { game.levelT = cfgOf().dur; }
+    } else if (DEBUG && e.code === "KeyK") {
+      game.hp = 4;
+    }
+  });
+  window.addEventListener("keyup", (e) => {
+    if (e.code === "Space" && !DEBUG) breathUp("key");
+  });
+
+  // ---------- 物理 ----------
+  const PULL = 340, DRAG_K = 16, DRAG_CAP = 3200, DAMP = 2.4;
+
+  function waveAmp(w, dt, tNow, cfg) {
+    w.surge *= Math.exp(-dt * 1.1);
+    w.next -= dt;
+    if (w.next <= 0) {
+      const diff = clamp(game.totalTime / 150, 0, 1);
+      const pw = rand(cfg.surgePw[0], cfg.surgePw[1]) * (0.8 + 0.4 * diff);
+      w.surge += pw;
+      if (cfg.twin) {
+        // 风暴关:相邻波形一同涌动(多维风暴)
+        const i = game.waves.indexOf(w);
+        const other = game.waves[(i + 1) % game.waves.length];
+        other.surge += pw * 0.7;
+      }
+      w.next = rand(cfg.surgeIv[0], cfg.surgeIv[1]);
+    }
+    const base = 0.42 + 0.30 * Math.sin(tNow * w.spd + w.ph);
+    return Math.min(2.1, Math.max(0.08, base + w.surge));
+  }
+
+  function spawnRipple(a) {
+    const c = center();
+    game.ripples.push({ x: c.x, y: c.y, r: baseR() * 0.25, v: 240, a });
+    if (game.ripples.length > 14) game.ripples.shift();
+  }
+
+  function physics(dt, tNow) {
+    const cfg = cfgOf();
+    const c = center();
+    const Rtgt = safeRTarget();
+    game.Rcur += (Rtgt - game.Rcur) * Math.min(1, dt * 2.2);
+    const R = game.Rcur;
+
+    // 深呼吸:3 秒内拉力倍率 1 → 0.5;松手后回落并进入冷却
+    const b = game.breath;
+    if (b.held) {
+      b.mult = Math.max(0.5, b.mult - dt * (0.5 / 3));
+      b.rip -= dt;
+      if (b.rip <= 0) { spawnRipple(0.4); b.rip = 0.55; }
+    } else {
+      b.mult += (1 - b.mult) * (1 - Math.exp(-2.5 * dt));
+      b.cd = Math.max(0, b.cd - dt);
+    }
+
+    let fx = 0, fy = 0;
+    // 焦虑气流
+    const gustA = tNow * 0.13 + Math.sin(tNow * 0.07) * 2;
+    const gustM = cfg.gust * (0.22 + 0.2 * Math.sin(tNow * 0.11 + 1)) * PULL;
+    fx += Math.cos(gustA) * gustM;
+    fy += Math.sin(gustA) * gustM;
+    // 四方波形拉力(受深呼吸减半)
+    for (const w of game.waves) {
+      w.amp = waveAmp(w, dt, tNow, cfg);
+      const a = anchorOf(w);
+      const dx = a.x - game.pos.x, dy = a.y - game.pos.y;
+      const d = Math.hypot(dx, dy) || 1;
+      const f = PULL * cfg.pull * b.mult * w.amp;
+      fx += dx / d * f;
+      fy += dy / d * f;
+    }
+    // 指针橡皮筋
+    if (game.pointer.down) {
+      const dx = game.pointer.x - game.pos.x, dy = game.pointer.y - game.pos.y;
+      let ax = dx * DRAG_K, ay = dy * DRAG_K;
+      const m = Math.hypot(ax, ay);
+      if (m > DRAG_CAP) { ax *= DRAG_CAP / m; ay *= DRAG_CAP / m; }
+      fx += ax; fy += ay;
+    }
+    game.vel.x = (game.vel.x + fx * dt) * Math.exp(-DAMP * dt);
+    game.vel.y = (game.vel.y + fy * dt) * Math.exp(-DAMP * dt);
+    game.pos.x += game.vel.x * dt;
+    game.pos.y += game.vel.y * dt;
+
+    const M = 8;
+    if (game.pos.x < M)     { game.pos.x = M;     game.vel.x *= -0.4; }
+    if (game.pos.x > W - M) { game.pos.x = W - M; game.vel.x *= -0.4; }
+    if (game.pos.y < M)     { game.pos.y = M;     game.vel.y *= -0.4; }
+    if (game.pos.y > H - M) { game.pos.y = H - M; game.vel.y *= -0.4; }
+
+    // 圈内 / 圈外
+    const dist = Math.hypot(game.pos.x - c.x, game.pos.y - c.y);
+    const inside = dist <= R;
+    game.stress += ((inside ? 0 : 1) - game.stress) * (1 - Math.exp(-6 * dt));
+
+    game.totalTime += dt;
+    game.lvTotal += dt;
+    if (inside) {
+      game.insideTime += dt; game.lvInside += dt; game.streak += dt;
+      game.hp = Math.min(100, game.hp + 3.5 * dt);
+    } else {
+      if (game.streak > 0) game.streak = 0;
+      game.hp -= cfg.drain * dt;
+    }
+    if (game._wasInside && !inside) { game.shake = 1; game.flash = 1; game.exits++; }
+    game._wasInside = inside;
+    game.shake *= Math.exp(-4 * dt);
+    game.flash *= Math.exp(-2.5 * dt);
+
+    // 螺旋随偏移加速 + 抖动
+    const dev = clamp(dist / R, 0, 2);
+    for (const s of game.spirals) {
+      s.rot += (0.4 + 3.2 * dev * dev + 4.5 * game.stress) * s.dir * s.spd * dt;
+      s.jit = (Math.sin(tNow * 17 + s.ph * 9) + Math.sin(tNow * 29 + s.ph * 5)) * 0.5
+              * (0.04 + 0.22 * dev + 0.3 * game.stress);
+    }
+    game.pointer.near = Math.hypot(game.pointer.x - game.pos.x, game.pointer.y - game.pos.y) < 90;
+
+    // 水波纹扩散
+    for (const rp of game.ripples) { rp.r += rp.v * dt; rp.v *= 1.015; rp.a -= 0.32 * dt; }
+    while (game.ripples.length && game.ripples[0].a <= 0) game.ripples.shift();
+
+    // 心态耗尽 → 失败;撑满时长 → 过关
+    if (game.hp <= 0) { game.hp = 0; endLevel(false); return; }
+    game.levelT += dt;
+    if (game.levelT >= cfg.dur) endLevel(true);
+  }
+
+  // ---------- 绘制 ----------
+  function drawWave(w, tNow, colW, st) {
+    const a = anchorOf(w);
+    const amp = w.amp || 0.3;
+    const horiz = (w.side === "top" || w.side === "bottom");
+    const L = (horiz ? W : H) * 0.5;
+    const storm = game.state === "playing" && game.levelIdx === 2;
+    ctx.beginPath();
+    for (let u = 0; u <= 1.0001; u += 1 / 110) {
+      const env = Math.sin(u * Math.PI);
+      let off = Math.sin(u * L * w.freq + tNow * w.spd + w.ph) * amp * 13 * env;
+      if (storm) off += Math.sin(u * L * w.freq * 2.7 + tNow * w.spd * 1.6 + w.ph * 2) * amp * 5 * env;
+      const x = horiz ? a.x - L / 2 + u * L : a.x + off;
+      const y = horiz ? a.y + off : a.y - L / 2 + u * L;
+      u === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.strokeStyle = colW;
+    ctx.globalAlpha = (0.45 + 0.35 * clamp(amp, 0, 1) + 0.2 * st) * lerp(1, 0.6, 1 - game.breath.mult);
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+    ctx.beginPath();
+    ctx.arc(a.x, a.y, 3.5, 0, 6.2832);
+    ctx.fillStyle = colW;
+    ctx.fill();
+  }
+
+  function drawDashLine(w, colD, st) {
+    const a = anchorOf(w);
+    const amp = w.amp || 0.3;
+    ctx.setLineDash([6, 7]);
+    ctx.beginPath();
+    ctx.moveTo(game.pos.x, game.pos.y);
+    ctx.lineTo(a.x, a.y);
+    ctx.strokeStyle = colD;
+    ctx.globalAlpha = (0.12 + 0.45 * clamp(amp / 1.5, 0, 1) + 0.25 * st) * game.breath.mult;
+    ctx.lineWidth = 1 + st * 0.8;
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.globalAlpha = 1;
+  }
+
+  function drawSpiral(s, R, colS, st) {
+    const T = s.turns * 6.2832;
+    const rMax = R * s.r;
+    ctx.beginPath();
+    const N = 90;
+    for (let k = 0; k <= N; k++) {
+      const t = (k / N) * T;
+      const r = 5 + (rMax - 5) * (k / N);
+      const a = t * s.dir + s.rot + s.jit * Math.sin(k * 0.6);
+      const x = game.pos.x + Math.cos(a) * r;
+      const y = game.pos.y + Math.sin(a) * r * 0.96;
+      k === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.strokeStyle = colS;
+    ctx.globalAlpha = 0.38 + 0.25 * st;
+    ctx.lineWidth = 1.6;
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+
+  function draw(tNow) {
+    const st = game.stress;
+    const c = center(), R = game.Rcur;
+    const colBg = mix(C.bg[0], C.bg[1], st);
+    const colCi = mix(C.circle[0], C.circle[1], st);
+    const colW  = mix(C.wave[0], C.wave[1], st);
+    const colD  = mix(C.dash[0], C.dash[1], st);
+    const colS  = mix(C.spiral[0], C.spiral[1], st);
+    const colDot= mix(C.dot[0], C.dot[1], st);
+
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    if (game.shake > 0.01) {
+      ctx.translate((Math.random() - 0.5) * game.shake * 12, (Math.random() - 0.5) * game.shake * 12);
+    }
+    ctx.fillStyle = colBg;
+    ctx.fillRect(-20, -20, W + 40, H + 40);
+
+    if (st > 0.02) {
+      const g = ctx.createRadialGradient(c.x, c.y, R * 0.5, c.x, c.y, Math.max(W, H) * 0.75);
+      g.addColorStop(0, "rgba(224,72,62,0)");
+      g.addColorStop(1, `rgba(224,72,62,${0.22 * st})`);
+      ctx.fillStyle = g;
+      ctx.fillRect(-20, -20, W + 40, H + 40);
+    }
+
+    // 安全区收缩预告(第三关:目标半径虚线)
+    if (game.state === "playing" && game.levelIdx === 2) {
+      const rEnd = baseR() * cfgOf().r1;
+      if (rEnd < R - 4) {
+        ctx.beginPath();
+        ctx.arc(c.x, c.y, rEnd, 0, 6.2832);
+        ctx.setLineDash([4, 9]);
+        ctx.strokeStyle = "rgba(224,72,62,0.3)";
+        ctx.lineWidth = 1.2;
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+    }
+
+    // 安全圈
+    ctx.beginPath();
+    ctx.arc(c.x, c.y, R, 0, 6.2832);
+    const breathFill = game.breath.mult < 0.95 ? 0.05 : 0.025 + 0.012 * Math.sin(tNow * 1.6);
+    ctx.fillStyle = `rgba(67,83,217,${(1 - st) * breathFill})`;
+    ctx.fill();
+    ctx.strokeStyle = colCi;
+    ctx.lineWidth = 2 + st * 1.2 + game.flash * 4;
+    if (st > 0.5) ctx.setLineDash([10, 6]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // 连续平静进度弧
+    const frac = clamp(game.streak / 30, 0, 1);
+    if (frac > 0.002) {
+      ctx.beginPath();
+      ctx.arc(c.x, c.y, R + 12, -Math.PI / 2, -Math.PI / 2 + frac * 6.2832);
+      ctx.strokeStyle = colW;
+      ctx.globalAlpha = 0.55;
+      ctx.lineWidth = 3;
+      ctx.lineCap = "round";
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+      ctx.lineCap = "butt";
+    }
+
+    // 深呼吸水波纹(由中心向外扩散)
+    const colR = mix(C.ripple[0], C.ripple[1], game.breath.held ? 1 : st * 0.3);
+    for (const rp of game.ripples) {
+      ctx.beginPath();
+      ctx.arc(rp.x, rp.y, rp.r, 0, 6.2832);
+      ctx.strokeStyle = colR;
+      ctx.globalAlpha = Math.max(0, rp.a);
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+
+    for (const w of game.waves) drawWave(w, tNow, colW, st);
+    for (const w of game.waves) drawDashLine(w, colD, st);
+    for (const s of game.spirals) drawSpiral(s, R, colS, st);
+
+    if (game.flash > 0.02) {
+      ctx.beginPath();
+      ctx.arc(c.x, c.y, R + 5, 0, 6.2832);
+      ctx.strokeStyle = `rgba(224,72,62,${game.flash * 0.8})`;
+      ctx.lineWidth = 5 * game.flash;
+      ctx.stroke();
+    }
+
+    if (!game.pointer.down && game.pointer.near && game.state === "playing") {
+      ctx.beginPath();
+      ctx.arc(game.pos.x, game.pos.y, 14 + 2 * Math.sin(tNow * 6), 0, 6.2832);
+      ctx.strokeStyle = colDot;
+      ctx.globalAlpha = 0.5;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+    const pr = 7 + (game.pointer.down ? 1 : 0) + st * 1.5 * (0.5 + 0.5 * Math.sin(tNow * 9));
+    ctx.beginPath();
+    ctx.arc(game.pos.x, game.pos.y, pr, 0, 6.2832);
+    ctx.fillStyle = colDot;
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(game.pos.x, game.pos.y, pr, 0, 6.2832);
+    ctx.strokeStyle = "rgba(255,255,255,0.85)";
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  }
+
+  // ---------- HUD ----------
+  const elMood = document.getElementById("stMood");
+  const elHp = document.getElementById("stHp");
+  const hpBar = document.getElementById("hpBar");
+  const elLevel = document.getElementById("stLevel");
+  const lvBar = document.getElementById("lvBar");
+  const elLvp = document.getElementById("stLvp");
+  const elRate = document.getElementById("stRate");
+  const elTime = document.getElementById("stTime");
+  let hudT = 0;
+  function hud(dt) {
+    hudT -= dt;
+    if (hudT > 0) return;
+    hudT = 0.12;
+    const anxious = game.stress > 0.5;
+    elMood.textContent = anxious ? "焦虑" : (game.breath.mult < 0.95 ? "深呼吸中" : "平静");
+    elMood.className = anxious ? "anxious" : "calm";
+    elHp.textContent = Math.round(game.hp);
+    hpBar.firstElementChild.style.width = game.hp + "%";
+    hpBar.classList.toggle("low", game.hp < 30);
+    const cfg = cfgOf();
+    elLevel.textContent = cfg.name;
+    const lvP = clamp(game.levelT / cfg.dur, 0, 1);
+    lvBar.firstElementChild.style.width = (lvP * 100).toFixed(0) + "%";
+    elLvp.textContent = Math.round(lvP * 100) + "%";
+    elRate.textContent = game.totalTime > 1
+      ? Math.round(game.insideTime / game.totalTime * 100) + "%" : "--";
+    elTime.textContent = Math.round(game.totalTime) + " s";
+
+    // 呼吸按钮状态
+    const b = game.breath;
+    breathBtn.classList.toggle("active", b.held && b.cd <= 0);
+    breathBtn.classList.toggle("cooldown", b.cd > 0);
+    if (b.cd > 0) {
+      breathBtn.style.background =
+        `conic-gradient(rgba(127,209,139,.25) ${100 - b.cd / 5 * 100}%, rgba(85,87,94,.35) 0)`;
+      breathBtn.innerHTML = `冷 却<small>${b.cd.toFixed(1)} s</small>`;
+    } else if (b.held) {
+      breathBtn.style.background = "";
+      breathBtn.innerHTML = `呼 吸<small>拉力 ×${b.mult.toFixed(2)}</small>`;
+    } else {
+      breathBtn.style.background = "";
+      breathBtn.innerHTML = `呼 吸<small>长按 / 空格</small>`;
+    }
+  }
+
+  // ---------- 状态机界面 ----------
+  const quoteOf = (arr) => arr[Math.floor(Math.random() * arr.length)];
+  const fmtRate = () => game.totalTime > 1 ? Math.round(game.insideTime / game.totalTime * 100) + "%" : "--";
+
+  function showMenu() {
+    game.state = "menu";
+    overlay.innerHTML = `
+      <div class="card">
+        <h2>焦虑拉扯<span class="en">Anxiety Tug</span></h2>
+        <p><b>按住画布任意位置拖动</b>红点,抵抗四方波形的拉力,让它留在黑色安全圈内。</p>
+        <p class="l2">三关递进:一 · 微风 → 二 · 涌浪 → 三 · 风暴(安全区将持续收缩)<br>
+        长按 <b>空格</b> 或右下角按钮「深呼吸」:3 秒内波形拉力减半,伴随水波纹扩散<br>
+        被拉出边界会持续消耗心态值,耗尽则被焦虑吞没;撑过每关时长即通过</p>
+        <div class="btnrow"><button id="ovBtn">开 始</button></div>
+      </div>`;
+    overlay.classList.remove("hidden");
+    breathBtn.style.display = "none";
+    document.getElementById("ovBtn").addEventListener("click", () => startRun());
+  }
+  function showClear() {
+    const rate = game.lvTotal > 1 ? Math.round(game.lvInside / game.lvTotal * 100) + "%" : "--";
+    overlay.innerHTML = `
+      <div class="card">
+        <h2>第${["一", "二", "三"][game.levelIdx]}关 · 通过<span class="en">${cfgOf().en} cleared</span></h2>
+        <p class="quote">${quoteOf(["这一关,你稳稳地接住了。", "波澜再大,你也没松手。", "很好 —— 继续把注意力放在这里。"])}</p>
+        <p class="l2">本关平静率 ${rate} · 心态剩余 ${Math.round(game.hp)} · 已坚持 ${Math.round(game.totalTime)} s</p>
+        <div class="btnrow"><button id="ovBtn">下一关</button></div>
+        <p class="l2" id="ovAuto">6 秒后自动进入</p>
+      </div>`;
+    overlay.classList.remove("hidden");
+    document.getElementById("ovBtn").addEventListener("click", () => loadLevel(game.levelIdx + 1));
+  }
+  function showEnd(win) {
+    const quote = quoteOf(win ? QUOTE_WIN : QUOTE_LOSE);
+    overlay.innerHTML = win ? `
+      <div class="card">
+        <h2>通关 · 与风共处<span class="en">Clear</span></h2>
+        <p class="quote">${quote}</p>
+        <p class="l2">累计坚持 ${Math.round(game.totalTime)} s · 平静率 ${fmtRate()} · 出圈 ${game.exits} 次 · 剩余心态 ${Math.round(game.hp)}</p>
+        <div class="btnrow"><button id="ovBtn">再来一次</button></div>
+      </div>` : `
+      <div class="card">
+        <h2>被拉走了……<span class="en">Breathe</span></h2>
+        <p class="quote">${quote}</p>
+        <p class="l2">坚持了 ${Math.round(game.totalTime)} s · 到达 第${["一", "二", "三"][game.levelIdx]}关 · 平静率 ${fmtRate()}</p>
+        <div class="btnrow">
+          <button id="ovBtn">再试一次</button>
+          <button id="ovMenu" class="ghost">回到开始</button>
+        </div>
+      </div>`;
+    overlay.classList.remove("hidden");
+    breathBtn.style.display = "none";
+    document.getElementById("ovBtn").addEventListener("click", () => {
+      win ? startRun() : loadLevel(game.levelIdx);
+    });
+    document.getElementById("ovMenu")?.addEventListener("click", () => showMenu());
+  }
+
+  // ---------- 主循环 ----------
+  let lastT = 0;
+  function frame(tms) {
+    requestAnimationFrame(frame);
+    const t = tms / 1000;
+    const dt = clamp(lastT ? t - lastT : 0.016, 0, 0.05);
+    lastT = t;
+    if (!W || !H) return;
+
+    if (game.state === "playing") {
+      physics(dt, t);
+    } else {
+      // 非进行中状态:波形保持轻柔摆动作背景;结算期间焦虑度回落
+      for (const w of game.waves) {
+        w.amp = waveAmp(w, dt, t, { surgeIv: [3, 6], surgePw: [0.1, 0.25], twin: false });
+      }
+      game.stress += (0 - game.stress) * (1 - Math.exp(-2 * dt));
+      for (const rp of game.ripples) { rp.r += rp.v * dt; rp.a -= 0.32 * dt; }
+      while (game.ripples.length && game.ripples[0].a <= 0) game.ripples.shift();
+      if (game.state === "menu") {
+        const c = center();
+        game.pos.x = c.x; game.pos.y = c.y;
+        game.Rcur += (baseR() - game.Rcur) * Math.min(1, dt * 2);
+      }
+      if (game.state === "clear") {
+        game.clearAuto -= dt;
+        const el = document.getElementById("ovAuto");
+        if (el) el.textContent = Math.ceil(game.clearAuto) + " 秒后自动进入";
+        if (game.clearAuto <= 0) loadLevel(game.levelIdx + 1);
+      }
+    }
+    draw(t);
+    if (game.state === "playing") hud(dt);
+  }
+
+  initWaves();
+  initSpirals();
+  game.Rcur = safeRTarget();
+  game.pos.x = W / 2; game.pos.y = H / 2;
+  showMenu();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

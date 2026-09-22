@@ -10,7 +10,7 @@
 |---|------|------|--------|
 | 01 | **POP SHUTTER · 波普快门** | 摄像头实时渲染沃霍尔式波普宫格，"焦躁指数"冲过阈值自动抓拍 | [cyfdazuiwa/pop-shutter](https://github.com/cyfdazuiwa/pop-shutter) |
 | 02 | **MESS → CALM** | 三幕交互小游戏：点击平静 → 射击乱麻 → 把乱线拉直 | [1842690025-hue/mess-to-calm](https://github.com/1842690025-hue/mess-to-calm) |
-| 03 | **ANXIETY TUG · 焦虑拉扯** | 按住小红点抵抗四方波形拉扯，把它留在安全圈里 | [hzhuangzhen1001-gif/anxiety-tug](https://github.com/hzhuangzhen1001-gif/anxiety-tug) |
+| 03 | **ANXIETY TUG · 静息 Still（焦虑拉扯）** | 三关递进：按住小红点抵抗四方波形拉扯，长按空格 / 握拳深呼吸，支持 MediaPipe 摄像头手势控制 | [hzhuangzhen1001-gif/anxiety-tug](https://github.com/hzhuangzhen1001-gif/anxiety-tug) |
 
 三个作品均为纯前端实现，源码以独立目录形式并入本仓库（`pop-shutter/`、`mess-to-calm/`、`anxiety-tug/`），由展示页通过 iframe 直接嵌入运行。各作品版权归原作者所有；anxiety-tug 采用 MIT 许可，其余作品如需单独使用请先联系对应作者。
 
@@ -25,7 +25,7 @@ python3 -m http.server 8461
 # 打开 http://localhost:8461/
 ```
 
-> 波普快门需要调用摄像头，必须在 `localhost` 或 HTTPS 环境下打开。
+> 波普快门需要调用摄像头；静息（ANXIETY TUG）的手势控制为可选，开启时同样需要摄像头。均须在 `localhost` 或 HTTPS 环境下打开。
 
 ## 页面功能
 

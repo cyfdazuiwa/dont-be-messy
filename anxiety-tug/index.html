@@ -3,527 +3,1232 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>焦虑拉扯 · Anxiety Tug</title>
+<title>静息 · Still — 焦虑互动实验(p5.js)</title>
+<!-- p5.js 官方 CDN;如需离线可下载到本地并替换 src -->
+<script src="https://cdn.jsdelivr.net/npm/p5@1.9.4/lib/p5.min.js"></script>
+<!-- MediaPipe Hands(手势识别):仅在用户开启"手势控制"时初始化 -->
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
 <style>
-  :root {
-    --bg: #17181c;
-    --panel: #22242a;
-    --text: #d8dae0;
-    --dim: #8a8d96;
-    --accent: #f7a41d;
-    --danger: #e0483e;
-  }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  html, body { height: 100%; }
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font: 14px/1.5 -apple-system, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    min-height: 100%;
-  }
-  header { width: 100%; max-width: 1060px; padding: 18px 24px 10px; }
-  header h1 { font-size: 18px; font-weight: 600; }
-  header h1 .en { color: var(--dim); font-weight: 400; font-size: 14px; margin-left: 8px; }
-  header .meta { color: var(--dim); font-size: 12.5px; margin-top: 2px; }
-  .stage {
-    position: relative;
-    width: min(1060px, calc(100vw - 32px));
-    height: min(640px, calc(100vh - 190px));
-    min-height: 420px;
-    background: #faf9f5;
-    border-radius: 8px;
-    overflow: hidden;
-    box-shadow: 0 8px 40px rgba(0,0,0,.55);
-    flex: 0 0 auto;
-  }
-  canvas { width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; }
-  canvas.grabbing { cursor: grabbing; }
-  .hud-stats {
-    position: absolute; top: 12px; left: 14px;
-    background: rgba(23,24,28,.82);
-    color: #e8e9ec;
-    border-radius: 8px;
-    padding: 8px 12px;
-    font-size: 12px; line-height: 1.7;
-    pointer-events: none;
-    font-variant-numeric: tabular-nums;
-    backdrop-filter: blur(3px);
-  }
-  .hud-stats b { font-weight: 600; margin-left: 6px; }
-  #stMood.calm { color: #7fd18b; }
-  #stMood.anxious { color: #ff8d80; }
-  .intro {
-    position: absolute; inset: 0;
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #F9F8F6; }
+  canvas { display: block; cursor: grab; }
+  canvas:active { cursor: grabbing; }
+
+  /* ---------- 覆盖层(开始 / 过关 / 结算),莫兰迪纸面风格 ---------- */
+  #overlay {
+    position: fixed; inset: 0;
     display: flex; align-items: center; justify-content: center;
-    background: rgba(23,24,28,.45);
+    background: rgba(249, 248, 246, 0.75);
+    backdrop-filter: blur(4px);
     transition: opacity .5s ease;
+    z-index: 10;
   }
-  .intro.hidden { opacity: 0; pointer-events: none; }
-  .intro .card {
-    background: rgba(34,36,42,.96);
-    border: 1px solid #3a3d46;
-    border-radius: 12px;
-    padding: 22px 28px;
-    max-width: 480px;
+  #overlay.hidden { opacity: 0; pointer-events: none; }
+  .card {
+    background: rgba(252, 251, 249, 0.96);
+    border: 1px solid rgba(59, 58, 54, 0.18);
+    border-radius: 14px;
+    padding: 30px 42px;
+    max-width: 540px;
     text-align: center;
-    color: #e8e9ec;
-    font-size: 13.5px;
+    color: #5B5852;
+    font-family: "Songti SC", "Noto Serif SC", "STSong", serif;
+    box-shadow: 0 18px 60px rgba(59,58,54,.14);
   }
-  .intro .card p { margin: 6px 0; }
-  .intro .card .l2 { color: var(--dim); font-size: 12px; }
-  .intro .card b { color: #fff; }
-  .intro button {
-    margin-top: 14px;
-    background: var(--accent);
-    color: #1c1c1e;
-    border: none;
-    border-radius: 8px;
-    padding: 8px 30px;
-    font-size: 14px; font-weight: 600;
+  .card h1 { font-size: 32px; font-weight: 600; letter-spacing: 10px; color: #3B3A36; }
+  .card h1 .en { display: block; font-size: 12px; letter-spacing: 6px; color: #9A948B; margin-top: 6px; font-family: Georgia, serif; }
+  .card .rule { margin: 16px 0 4px; font-size: 13.5px; line-height: 2.0; text-align: left; }
+  .card .rule b { color: #B5654F; }
+  .card .rule i { font-style: normal; color: #7C93A6; }
+  .card .quote { margin: 12px 0 4px; font-size: 16px; color: #8A8272; letter-spacing: 1px; }
+  .card .stats { font-size: 13px; color: #9A948B; margin: 8px 0; line-height: 1.9; }
+  .card .stats b { color: #5B5852; font-size: 15px; }
+  .card .badge {
+    display: inline-block; margin: 10px 0 2px;
+    font-size: 20px; letter-spacing: 6px; color: #6B8299;
+    border: 1px solid rgba(107,130,153,.4); border-radius: 999px;
+    padding: 8px 26px;
+  }
+  .card button {
+    margin-top: 16px;
+    background: #3B3A36; color: #FFFFFF;
+    border: none; border-radius: 999px;
+    padding: 10px 40px;
+    font-size: 15px; letter-spacing: 8px; text-indent: 8px;
+    font-family: "Songti SC", "Noto Serif SC", serif;
     cursor: pointer;
   }
-  .intro button:hover { filter: brightness(1.08); }
-  footer { color: var(--dim); font-size: 12px; padding: 10px 24px 20px; max-width: 1060px; }
-  footer code { background: var(--panel); border-radius: 4px; padding: 1px 6px; font-size: 11px; }
+  .card button.ghost { background: transparent; color: #5B5852; border: 1px solid rgba(59,58,54,.35); }
+  .card button + button { margin-left: 10px; }
+  .card button:hover { background: #55534D; color: #FFFFFF; }
+  .card .hint { margin-top: 12px; font-size: 11px; color: #B0AAA0; }
+
+  /* ---------- 开始界面:沉浸式全屏,p5 画布即背景 ---------- */
+  #menu {
+    position: fixed; inset: 0; z-index: 9;
+    display: flex; align-items: center; justify-content: center;
+    color: #3B3A36; font-family: "Songti SC", "Noto Serif SC", "STSong", serif;
+    transition: opacity .7s ease; user-select: none;
+  }
+  #menu.hidden { opacity: 0; pointer-events: none; }
+  #menuTitle { text-align: center; animation: titleIn 1.8s ease both; }
+  #menuTitle h1 {
+    margin: 0; font-size: clamp(54px, 9vw, 96px); font-weight: 500;
+    letter-spacing: .45em; text-indent: .45em;
+    color: rgba(51, 51, 51, 0.82);
+    text-shadow: 0 0 42px rgba(59, 58, 54, 0.10);
+  }
+  #menuTitle .en {
+    margin-top: 16px; font-family: Georgia, serif;
+    font-size: clamp(11px, 1.3vw, 14px);
+    letter-spacing: .58em; text-indent: .58em;
+    color: rgba(51, 51, 51, 0.45);
+  }
+  @keyframes titleIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  #menuBottom {
+    position: absolute; left: 0; right: 0; bottom: 8vh;
+    display: flex; flex-direction: column; align-items: center;
+  }
+  #menuBtns { display: flex; gap: 16px; align-items: center; }
+  .pill {
+    border-radius: 999px; cursor: pointer;
+    border: 1px solid rgba(59, 58, 54, 0.26);
+    background: rgba(255, 255, 255, 0.55);
+    color: #333333;
+    font-family: inherit; font-size: 15px;
+    letter-spacing: 6px; text-indent: 6px;
+    backdrop-filter: blur(6px);
+    transition: background .25s ease, transform .25s ease;
+  }
+  .pill:hover { background: rgba(255, 255, 255, 0.9); transform: translateY(-1px); }
+  .pill.primary { padding: 15px 58px; animation: breathe 3.4s ease-in-out infinite; }
+  @keyframes breathe {
+    0%, 100% { transform: scale(1);     box-shadow: 0 0 0   rgba(163, 179, 154, 0); }
+    50%      { transform: scale(1.045); box-shadow: 0 6px 36px rgba(163, 179, 154, 0.5); }
+  }
+  .pill.ghost {
+    padding: 12px 34px; font-size: 13px;
+    color: rgba(51, 51, 51, 0.62);
+    border-color: rgba(59, 58, 54, 0.18);
+    background: rgba(255, 255, 255, 0.35);
+  }
+  #camStat {
+    margin-top: 16px; min-height: 17px;
+    font-size: 11.5px; letter-spacing: 1.5px;
+    color: rgba(51, 51, 51, 0.42); text-align: center;
+  }
+
+  /* 右上角 "?" 说明入口 + 半透明说明面板 */
+  #helpBtn {
+    position: fixed; top: 20px; right: 22px; z-index: 12;
+    width: 38px; height: 38px; border-radius: 50%;
+    border: 1px solid rgba(59, 58, 54, 0.30);
+    background: rgba(255, 255, 255, 0.50);
+    color: #333333;
+    font: 17px Georgia, serif; cursor: pointer;
+    backdrop-filter: blur(6px);
+    transition: background .25s ease, transform .25s ease;
+  }
+  #helpBtn:hover { background: rgba(255, 255, 255, 0.9); transform: scale(1.08); }
+  #helpBtn.hidden { display: none; }
+  #helpPanel {
+    position: fixed; inset: 0; z-index: 20;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(249, 248, 246, 0.55);
+    backdrop-filter: blur(3px);
+    transition: opacity .35s ease;
+  }
+  #helpPanel.hidden { opacity: 0; pointer-events: none; }
+  #helpPanel .pane {
+    max-width: 530px; margin: 20px; padding: 30px 38px 26px;
+    text-align: left; font-size: 13.5px; line-height: 2.05;
+    color: rgba(51, 51, 51, 0.88);
+    background: rgba(255, 255, 255, 0.72);
+    border: 1px solid rgba(59, 58, 54, 0.15);
+    border-radius: 16px; backdrop-filter: blur(10px);
+    font-family: "Songti SC", "Noto Serif SC", "STSong", serif;
+    box-shadow: 0 18px 60px rgba(59, 58, 54, 0.10);
+  }
+  #helpPanel b { color: #B5654F; }
+  #helpPanel i { font-style: normal; color: #64798C; }
+  #helpPanel .closeRow { text-align: center; margin-top: 18px; }
 </style>
 </head>
 <body>
-  <header>
-    <h1>焦虑拉扯<span class="en">Anxiety Tug</span></h1>
-    <div class="meta">一个关于"把注意力拉回中心"的小游戏 · 按住拖拽红点，抵抗四方波形的拉力</div>
-  </header>
 
-  <div class="stage" id="stage">
-    <canvas id="c"></canvas>
-    <div class="hud-stats">
-      <div>状态<b id="stMood" class="calm">平静</b></div>
-      <div>连续平静<b id="stStreak">0.0 s</b></div>
-      <div>最佳纪录<b id="stBest">0.0 s</b></div>
-      <div>平静率<b id="stRate">--</b></div>
-    </div>
-    <div class="intro" id="intro">
-      <div class="card">
-        <p><b>按住画布任意位置拖动</b>，红点会像被橡皮筋拴住一样跟着指针；</p>
-        <p>四周的蓝色波形一直在把它往外拉 —— 请尽量让它留在<b>黑色安全圈</b>内。</p>
-        <p class="l2">波形振幅越大，拉力越强 · 被拉出边界会进入焦虑警示状态 · 安全线弧 30 秒充满</p>
-        <button id="btnStart">开 始</button>
-      </div>
-    </div>
+<!-- 开始 / 过关 / 结算覆盖层:内容由 JS 填充(过关与结算仍用轻卡片) -->
+<div id="overlay"><div class="card" id="ovCard"></div></div>
+
+<!-- 开始界面:全屏沉浸式,p5 画布即动态背景 -->
+<div id="menu">
+  <div id="menuTitle">
+    <h1>静 息</h1>
+    <div class="en">STILL · A CALMING EXPERIMENT</div>
   </div>
-
-  <footer>
-    交互：<code>按住拖拽</code> 控制红点 · <code>R</code> 重新开始 ·
-    在圈内为平静（绿色），被拉出边界则进入焦虑状态（红色警示，螺旋加速抖动、波形变红）
-  </footer>
+  <div id="menuBottom">
+    <div id="menuBtns">
+      <button id="ovGo" class="pill primary">入 静</button>
+      <button id="ovCam" class="pill ghost">启用手势控制</button>
+    </div>
+    <div id="camStat">手势未开启 · 无摄像头时鼠标照常可用</div>
+  </div>
+</div>
+<button id="helpBtn" title="游戏说明">?</button>
+<div id="helpPanel" class="hidden">
+  <div class="pane">
+    <i>拖拽</i> 红点(鼠标按住,或开启手势后用<b>右手食尖</b>),抵抗四方波形的拉力,让它留在呼吸的安全圈内。<br>
+    <i>三关递进</i>:一 · 微风 → 二 · 涌浪 → 三 · 风暴(安全区持续收缩、双波同涌)。撑过每关时长即通过,也可在过关卡点击"下一关"。<br>
+    <i>心率条</i> 圈内下降、出圈上升,满格即 <b>短暂崩溃</b>(积分受损),三次后本场结束。<br>
+    <i>长按空格 / 握拳</i> 深呼吸:3 秒内拉力减半,扩散治愈水波纹(冷却 5 秒);<b>张开手掌</b>或松开空格即恢复常态。<br>
+    <i>手势控制</i> 可选:开启摄像头后食尖替代鼠标,左下角可查看镜像与骨骼;按 <b>G</b> 随时开关。<br>
+    触碰漂浮的 <i>正念粒子</i> 加分;贴住圆心进入 <b>心流</b>,减压与得分三倍。<b>R</b> 随时重开整局。
+    <div class="closeRow"><button id="helpClose" class="pill ghost">知 道 了</button></div>
+  </div>
+</div>
 
 <script>
-"use strict";
-(() => {
-  const canvas = document.getElementById("c");
-  const stage  = document.getElementById("stage");
-  const ctx = canvas.getContext("2d");
+/* =====================================================================
+   静息 · Still — 焦虑主题互动实验(p5.js 版 · 三关制)
+   ---------------------------------------------------------------------
+   玩法:按住鼠标拖拽红点,抵抗四方正弦波形的拉力,
+        让它留在周期性"呼吸"的黑色安全圈内。
+   关卡:一 · 微风 → 二 · 涌浪 → 三 · 风暴(安全区持续收缩、双波涌动),
+        撑过每关时长即通过;心率条满格触发"短暂崩溃",三次结束。
+   技能:长按空格 / 握拳深呼吸(3 秒内拉力减半 + 水波纹,冷却 5 秒)。
+   手势:MediaPipe Hands —— 右手食指尖替代鼠标拖拽红点,
+        握拳 = 深呼吸保护,张开手掌 = 释放;左下角半透明镜像 + 骨骼连线。
+   额外:正念粒子(触碰加分)、心流 Flow(贴住圆心分数三倍)。
+   ===================================================================== */
 
-  // ---------- 尺寸 ----------
-  let W = 0, H = 0, DPR = 1;
-  function resize() {
-    DPR = Math.min(window.devicePixelRatio || 1, 2);
-    W = stage.clientWidth; H = stage.clientHeight;
-    canvas.width = Math.round(W * DPR);
-    canvas.height = Math.round(H * DPR);
-  }
-  new ResizeObserver(resize).observe(stage);
-  resize();
+/* ---------- 莫兰迪色板 ---------- */
+const P = {
+  paper : "#F9F8F6",   // 暖白宣纸底(整体调性:明亮温润)
+  ink   : "#3B3A36",   // 安全圈·炭黑
+  wave  : "#7C93A6",   // 灰蓝波形
+  waveD : "#64798C",
+  dot   : "#B5654F",   // 玩家红点·莫兰迪橘粉
+  spiral: "#9A948B",   // 螺旋·暖灰
+  sage  : "#A3B39A",   // 雾绿(治愈)
+  rose  : "#C9A9A0",   // 灰粉(警示柔化)
+  mint  : "#9FC2A8",   // 薄荷绿(粒子/水波纹)
+  apric : "#E0B487",   // 暖杏(粒子)
+  lav   : "#A5A3C6",   // 淡蓝紫(粒子)
+  gold  : "#C2A878",   // 分数/进度
+  text  : "#5B5852",
+};
 
-  const rand = (a, b) => a + Math.random() * (b - a);
-  const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+/* ---------- 关卡配置:三关递进 ---------- */
+const LEVELS = [
+  { name: "一 · 微风", en: "Breeze",  dur: 30, pull: 0.72, r0: 1.00, r1: 1.00,
+    surgeIv: [2.4, 4.5], surgePw: [0.30, 0.55], gust: 0.60, twin: false, up: 0.10 },
+  { name: "二 · 涌浪", en: "Surge",   dur: 40, pull: 1.00, r0: 0.90, r1: 0.90,
+    surgeIv: [1.5, 3.0], surgePw: [0.45, 0.85], gust: 0.95, twin: false, up: 0.13 },
+  { name: "三 · 风暴", en: "Tempest", dur: 45, pull: 1.25, r0: 0.88, r1: 0.65,
+    surgeIv: [1.0, 2.1], surgePw: [0.60, 1.10], gust: 1.30, twin: true,  up: 0.16 },
+];
+const CN_NUM = ["一", "二", "三"];
+const QUOTE_CLEAR = [
+  "这一关,你稳稳地接住了。",
+  "波澜再大,你也没松手。",
+  "很好 —— 继续把注意力放在这里。",
+];
+const QUOTE_WIN = [
+  "你已学会与风共处,而不是对抗整片海洋。",
+  "呼吸之间,波澜自平。",
+  "风暴终会过去,而你一直都在。",
+];
+const QUOTE_LOSE = [
+  "被拉走也没关系。休息一下,再回来就好。",
+  "焦虑不是敌人,它只是提醒你:该深呼吸了。",
+  "每一次回来,都比上一次更熟练。",
+];
 
-  // ---------- 颜色（平静态 ↔ 焦虑态 插值） ----------
-  function hex2rgb(h) {
-    return [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
+/* ---------- 全局状态 ---------- */
+let state = "menu";          // menu | play | clear | win | lose
+let T = 0;                   // 游戏运行时钟(秒)
+let surviveT = 0;            // 累计坚持时间
+let score = 0;
+let stress = 0.15;           // 压力值 0..1(心率条)
+let breakdowns = 0;          // 崩溃次数(满 3 次结束)
+let bd = { t: 0 };           // 崩溃演出计时
+let shake = 0;
+
+let levelIdx = 0;            // 当前关卡
+let levelT = 0;              // 本关已进行时长
+let clearAuto = 0;           // 过关界面自动倒计时
+let lvInside = 0, lvTotal = 0;   // 本关平静率统计
+
+let dot;                     // 玩家红点 {x,y,vx,vy}
+let waves = [];
+let spirals = [];
+let particles = [];
+let ripples = [];
+let grain;
+
+let breath = { active: false, t: 0, cd: 0, rip: 0, mult: 1, src: "key" };
+let flowHeat = 0;
+let flowOn = false;
+let dangerLvl = 0;           // 本帧"紧绷度",供绘制函数共用
+
+/* ---------- 可调参数 ---------- */
+const PULL   = 340;
+const DRAG_K = 16;
+const DRAG_CAP = 3200;
+const DAMP   = 2.4;
+const BD_MAX = 3;            // 崩溃 3 次 = 练习结束(失败)
+
+/* ---------- 工具 ---------- */
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+const rand  = (a, b) => a + Math.random() * (b - a);
+const lerpN = (a, b, t) => a + (b - a) * t;
+function hexRGB(h) { return [parseInt(h.slice(1,3),16), parseInt(h.slice(3,5),16), parseInt(h.slice(5,7),16)]; }
+const RGB = {}; for (const k in P) RGB[k] = hexRGB(P[k]);
+function mixC(k1, k2, t) {
+  const a = RGB[k1], b = RGB[k2];
+  return color(a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t, a[2]+(b[2]-a[2])*t);
+}
+
+const cfgOf = () => LEVELS[levelIdx];
+/* 安全区半径:关卡基准(r0→r1 随关内进度收缩)× 呼吸系数 */
+function baseR() { return clamp(min(width, height) * 0.21, 110, 200); }
+function safeRTarget() {
+  const cfg = cfgOf();
+  const k = clamp(levelT / cfg.dur, 0, 1);
+  return baseR() * lerpN(cfg.r0, cfg.r1, k);
+}
+function safeR() { return safeRTarget() * (1 + 0.055 * Math.sin(T * 0.9)); }
+function center()  { return { x: width / 2, y: height / 2 }; }
+
+/* ================= p5 生命周期 ================= */
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  makeGrain();
+  resetEntities();
+  showMenu();
+}
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  makeGrain();
+}
+/* 纸面颗粒 + 亚麻经纬纤维:一次性离屏绘制 */
+function makeGrain() {
+  grain = createGraphics(width, height);
+  grain.noStroke();
+  for (let i = 0; i < width * height / 900; i++) {
+    grain.fill(59, 58, 54, rand(4, 14));
+    grain.circle(random(width), random(height), rand(0.6, 1.6));
   }
-  function mix(c1, c2, t) {
-    return `rgb(${Math.round(c1[0]+(c2[0]-c1[0])*t)},${Math.round(c1[1]+(c2[1]-c1[1])*t)},${Math.round(c1[2]+(c2[2]-c1[2])*t)})`;
+  /* 经纬纤维线:极低透明度的横纵长线,如宣纸/亚麻布纹 */
+  grain.stroke(96, 92, 84, 9);
+  grain.strokeWeight(1);
+  for (let i = 0; i < width / 90; i++) {
+    const y = random(height);
+    grain.line(0, y, width, y + rand(-5, 5));
   }
-  const C = {
-    bg:     [hex2rgb("#faf9f5"), hex2rgb("#f7ece7")],
-    circle: [hex2rgb("#1c1c1e"), hex2rgb("#d2372c")],
-    wave:   [hex2rgb("#4353d9"), hex2rgb("#e0483e")],
-    dash:   [hex2rgb("#9a9ea6"), hex2rgb("#d2372c")],
-    spiral: [hex2rgb("#6a6d75"), hex2rgb("#8c4038")],
-    dot:    [hex2rgb("#e0301e"), hex2rgb("#a81f14")],
+  for (let i = 0; i < height / 120; i++) {
+    const x = random(width);
+    grain.line(x, 0, x + rand(-5, 5), height);
+  }
+}
+
+function resetEntities() {
+  dot = { x: width / 2, y: height / 2, vx: 0, vy: 0 };
+  waves = ["top", "bottom", "left", "right"].map(side => ({
+    side, ph: rand(0, TWO_PI), freq: rand(0.018, 0.028),
+    spd: rand(1.6, 2.6), amp: 0.4, surge: 0, next: rand(1.2, 3),
+  }));
+  spirals = [
+    { r: 0.60, turns: 3.0, dir:  1, spd: 1.00, ph: rand(0, TWO_PI), rot: rand(0, TWO_PI), jit: 0 },
+    { r: 0.45, turns: 2.2, dir: -1, spd: 1.40, ph: rand(0, TWO_PI), rot: rand(0, TWO_PI), jit: 0 },
+    { r: 0.76, turns: 3.8, dir: -1, spd: 0.70, ph: rand(0, TWO_PI), rot: rand(0, TWO_PI), jit: 0 },
+  ];
+  particles = [];
+  for (let i = 0; i < 6; i++) particles.push(newParticle());
+  ripples = [];
+}
+function newParticle() {
+  return {
+    x: rand(60, width - 60), y: rand(60, height - 60),
+    vx: rand(-14, 14), vy: rand(-14, 14),
+    ph: rand(0, TWO_PI), tone: ["mint", "apric", "lav"][Math.floor(Math.random() * 3)],
   };
+}
 
-  // ---------- 游戏状态 ----------
-  const game = {
-    running: false,
-    pos: { x: 0, y: 0 }, vel: { x: 0, y: 0 },
-    pointer: { x: 0, y: 0, down: false, near: false },
-    stress: 0,           // 0 平静 … 1 焦虑（平滑过渡）
-    shake: 0, flash: 0,  // 出圈瞬间的震屏与红闪
-    streak: 0, best: +(localStorage.getItem("anxiety_best") || 0),
-    insideTime: 0, totalTime: 0,
-    waves: [], spirals: [],
-  };
-
-  function safeR() { return clamp(Math.min(W, H) * 0.19, 105, 185); }
-  function center() { return { x: W / 2, y: H / 2 }; }
-
-  // 四个波形：上下左右各一个，锚点即拉力方向
-  function initWaves() {
-    game.waves = [
-      { side: "top",    ph: rand(0, 6.28), freq: rand(0.018, 0.03), spd: rand(1.8, 3.0), surge: 0, next: rand(1.5, 3.5) },
-      { side: "bottom", ph: rand(0, 6.28), freq: rand(0.018, 0.03), spd: rand(1.8, 3.0), surge: 0, next: rand(1.5, 3.5) },
-      { side: "left",   ph: rand(0, 6.28), freq: rand(0.018, 0.03), spd: rand(1.8, 3.0), surge: 0, next: rand(1.5, 3.5) },
-      { side: "right",  ph: rand(0, 6.28), freq: rand(0.018, 0.03), spd: rand(1.8, 3.0), surge: 0, next: rand(1.5, 3.5) },
-    ];
+/* ---------- 输入 ---------- */
+function keyPressed() {
+  if (key === " ") {
+    breathStart("key");
+    return false; // 阻止空格滚动页面
   }
-  // 环绕控制点的灰色螺旋
-  function initSpirals() {
-    game.spirals = [
-      { r: 0.62, turns: 3.0, dir:  1, spd: 1.00, ph: rand(0, 6.28), rot: rand(0, 6.28) },
-      { r: 0.46, turns: 2.2, dir: -1, spd: 1.45, ph: rand(0, 6.28), rot: rand(0, 6.28) },
-      { r: 0.78, turns: 3.8, dir: -1, spd: 0.70, ph: rand(0, 6.28), rot: rand(0, 6.28) },
-    ];
+  if (key === "g" || key === "G") {           // 开/关手势控制
+    if (gc.on) {
+      stopGestureControl();
+      gc.gestureToast = "手势控制已关闭";
+      refreshCamStat();
+    } else {
+      startGestureControl().then(ok => {
+        gc.gestureToast = ok ? "手势控制已开启 · 食尖拖拽 / 握拳深呼吸 / 手掌释放" : "手势开启失败:" + gc.err;
+        refreshCamStat();
+      });
+    }
+    return false;
   }
-
-  function anchorOf(w) {
-    const m = 34;
-    switch (w.side) {
-      case "top":    return { x: W / 2, y: m };
-      case "bottom": return { x: W / 2, y: H - m };
-      case "left":   return { x: m, y: H / 2 };
-      case "right":  return { x: W - m, y: H / 2 };
+  if (key === "r" || key === "R") startRun();          // 随时重开整局
+  // 调试钩子(仅 ?debug):N 跳过本关,K 压力拉满,M 合成手势
+  if (location.search.includes("debug")) {
+    if ((key === "n" || key === "N") && state === "play") levelT = cfgOf().dur;
+    if ((key === "k" || key === "K") && state === "play") { stress = 1.5; bd.t = 0; }
+    if ((key === "m" || key === "M") && window.__mockHand) {
+      __mockHand(gc.gesture === GESTURE.FIST ? "open" : "fist", 0.5, 0.45);
     }
   }
+}
+function keyReleased() {
+  if (key === " ") breathStop("key");   // 松手即进入 5 秒冷却
+}
 
-  function reset(full) {
-    const c = center();
-    game.pos.x = c.x; game.pos.y = c.y;
-    game.vel.x = 0; game.vel.y = 0;
-    game.stress = 0; game.shake = 0; game.flash = 0;
-    game.streak = 0;
-    if (full) { game.insideTime = 0; game.totalTime = 0; initWaves(); }
+/* 鼠标 / 触摸:按住画布任意位置,红点被橡皮筋拉向指针 */
+let ptr = { x: 0, y: 0, down: false };
+function mousePressed() { ptr.down = true; ptr.x = mouseX; ptr.y = mouseY; }
+function mouseDragged() { ptr.x = mouseX; ptr.y = mouseY; }
+function mouseReleased(){ ptr.down = false; }
+function touchStarted(){ ptr.down = true; ptr.x = touches[0]?.x ?? mouseX; ptr.y = touches[0]?.y ?? mouseY; return false; }
+function touchMoved()  { ptr.x = touches[0]?.x ?? mouseX; ptr.y = touches[0]?.y ?? mouseY; return false; }
+function touchEnded()  { ptr.down = false; return false; }
+
+/* ================= 手势控制 · MediaPipe Hands ================= */
+const GESTURE = { NONE: "none", OPEN: "open", FIST: "fist", POINT: "point" };
+const HAND_LINKS = [[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[5,9],[9,10],[10,11],[11,12],
+                    [9,13],[13,14],[14,15],[15,16],[13,17],[17,18],[18,19],[19,20],[0,17]];
+const gc = {
+  on: false,              // 手势控制总开关(摄像头 + 模型就绪)
+  err: "",                // 最近一次错误(面板上展示)
+  videoReady: false,
+  seen: false,            // 最近一帧结果里有手
+  x: 0, y: 0,             // 食指尖画布坐标(镜像 + 指数平滑)
+  gesture: GESTURE.NONE,  // 已确认手势(去抖后)
+  cand: GESTURE.NONE, deb: 0, empty: 0,
+  raw: [], handLabel: "",
+  gestureToast: "",
+};
+let mpHands = null, camVideo = null, camStream = null, pumpBusy = false;
+
+/* 深呼吸统一入口:空格("key")与握拳("hand")共用;src 区分来源,避免互相误释放 */
+function breathStart(src) {
+  if (state !== "play" || breath.active || breath.cd > 0) return;
+  breath.active = true; breath.t = 0; breath.rip = 0; breath.src = src;
+  spawnRipple(width / 2, height / 2, 0.55, baseR() * 0.3);
+}
+function breathStop(src) {
+  if (!breath.active || breath.src !== src) return;
+  breath.active = false;
+  breath.cd = 5;
+}
+
+async function startGestureControl() {
+  if (gc.on) return true;
+  try {
+    if (typeof Hands === "undefined") throw new Error("MediaPipe 库未加载(检查网络)");
+    if (!navigator.mediaDevices?.getUserMedia) throw new Error("当前环境不支持摄像头");
+    camStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } },
+      audio: false,
+    });
+    camVideo = document.createElement("video");
+    camVideo.srcObject = camStream;
+    camVideo.playsInline = true;
+    camVideo.muted = true;
+    await camVideo.play();
+    mpHands = new Hands({ locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}` });
+    mpHands.setOptions({ maxNumHands: 2, modelComplexity: 1,
+                         minDetectionConfidence: 0.6, minTrackingConfidence: 0.6 });
+    mpHands.onResults(onHandResults);
+    gc.on = true; gc.err = ""; gc.videoReady = true;
+    pump();
+    return true;
+  } catch (e) {
+    gc.err = e?.message || String(e);
+    if (camStream) { camStream.getTracks().forEach(t => t.stop()); camStream = null; }
+    camVideo = null;
+    return false;
   }
-
-  // ---------- 交互 ----------
-  const intro = document.getElementById("intro");
-  document.getElementById("btnStart").addEventListener("click", () => {
-    intro.classList.add("hidden");
-    game.running = true;
-    reset(true);
+}
+function stopGestureControl() {
+  breathStop("hand");
+  gc.on = false; gc.seen = false; gc.raw = [];
+  gc.gesture = GESTURE.NONE; gc.cand = GESTURE.NONE; gc.deb = 0; gc.empty = 0;
+  gc.videoReady = false;
+  if (camStream) { camStream.getTracks().forEach(t => t.stop()); camStream = null; }
+  camVideo = null; mpHands = null;
+}
+/* 逐帧把摄像头画面喂给模型;send 本身 await 推理完成,天然限速 */
+function pump() {
+  if (!gc.on) return;
+  requestAnimationFrame(async () => {
+    if (!gc.on) return;
+    if (camVideo && camVideo.readyState >= 2 && !pumpBusy) {
+      pumpBusy = true;
+      try { await mpHands.send({ image: camVideo }); } catch (e) {}
+      pumpBusy = false;
+    }
+    pump();
   });
-  window.addEventListener("keydown", (e) => {
-    if (e.code === "KeyR") { reset(true); game.running = true; intro.classList.add("hidden"); }
-  });
+}
 
-  function ptr(e) {
-    const r = canvas.getBoundingClientRect();
-    game.pointer.x = e.clientX - r.left;
-    game.pointer.y = e.clientY - r.top;
+/* MediaPipe 结果 → 游戏输入(食尖坐标 + 手势) */
+function onHandResults(res) {
+  const lms = res.multiHandLandmarks || [];
+  if (!lms.length) {                    // 手离开画面:连续 3 帧空结果才判定丢失
+    if (++gc.empty >= 3) {
+      breathStop("hand");
+      gc.seen = false; gc.raw = [];
+      gc.gesture = GESTURE.NONE; gc.cand = GESTURE.NONE; gc.deb = 0;
+    }
+    return;
   }
-  canvas.addEventListener("pointerdown", (e) => {
-    ptr(e);
-    game.pointer.down = true;
-    canvas.setPointerCapture(e.pointerId);
-    canvas.classList.add("grabbing");
-    if (!game.running) { intro.classList.add("hidden"); game.running = true; }
-  });
-  canvas.addEventListener("pointermove", ptr);
-  const release = () => { game.pointer.down = false; canvas.classList.remove("grabbing"); };
-  canvas.addEventListener("pointerup", release);
-  canvas.addEventListener("pointercancel", release);
+  gc.empty = 0;
+  /* 前置摄像头原生画面未镜像,而 MediaPipe 按镜像自拍摄像头假设输出左右 → 先交换再挑右手 */
+  let pick = 0;
+  if (lms.length > 1) {
+    const i = (res.multiHandedness || []).findIndex(h => swapHand(h.label) === "Right");
+    if (i >= 0) pick = i;
+  }
+  const lm = lms[pick];
+  gc.handLabel = swapHand(res.multiHandedness?.[pick]?.label ?? "") === "Right" ? "右手" : "左手";
+  gc.raw = lm;
+  const wasSeen = gc.seen;
+  gc.seen = true;
 
-  // ---------- 物理 ----------
-  const PULL = 340;    // 波形拉力系数（× 振幅）
-  const DRAG_K = 16;   // 指针橡皮筋刚度
-  const DRAG_CAP = 3200; // 指针最大拉力（追红点需要一点时间）
-  const DAMP = 2.4;    // 空气阻尼
+  /* 右手食指尖(landmark 8)→ 画布坐标,指数平滑抑抖 */
+  const [tx, ty] = videoToCanvas(lm[8].x, lm[8].y);
+  if (!wasSeen) { gc.x = tx; gc.y = ty; }
+  else { gc.x += (tx - gc.x) * 0.35; gc.y += (ty - gc.y) * 0.35; }
 
-  function waveAmp(w, dt, tNow) {
+  /* 手势判定 + 连续 3 帧去抖;握拳进入保护,离开握拳即释放 */
+  const g = classifyPose(lm);
+  if (g !== gc.cand) { gc.cand = g; gc.deb = 0; }
+  gc.deb++;
+  if (gc.deb >= 3 && g !== gc.gesture) {
+    const prev = gc.gesture;
+    gc.gesture = g;
+    if (g === GESTURE.FIST) breathStart("hand");
+    else if (prev === GESTURE.FIST) breathStop("hand");
+  }
+}
+const swapHand = l => (l === "Left" ? "Right" : l === "Right" ? "Left" : l);
+
+/* 握拳/手掌判定:四指(不含拇指)指尖到腕距离 ÷ 指关节到腕距离
+   > 1.22 伸展,< 1.02 折叠;全部折叠=握拳,≥3 伸展=张开,其余=指尖控制 */
+function classifyPose(lm) {
+  const W = lm[0], d = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+  let ext = 0, fold = 0;
+  for (const [tip, pip] of [[8, 6], [12, 10], [16, 14], [20, 18]]) {
+    const r = d(lm[tip], W) / (d(lm[pip], W) || 1e-6);
+    if (r > 1.22) ext++;
+    else if (r < 1.02) fold++;
+  }
+  if (fold >= 3 && ext === 0) return GESTURE.FIST;
+  if (ext >= 3) return GESTURE.OPEN;
+  return GESTURE.POINT;
+}
+
+/* 归一化视频坐标 → 画布坐标:cover 铺满 + 水平镜像(自拍手感) */
+function videoToCanvas(nx, ny) {
+  const vw = camVideo?.videoWidth || 640, vh = camVideo?.videoHeight || 480;
+  const s = Math.max(width / vw, height / vh);
+  const dw = vw * s, dh = vh * s;
+  return [(width - dw) / 2 + (1 - nx) * dw, (height - dh) / 2 + ny * dh];
+}
+
+/* 调试(?debug):__mockHand("fist"|"open"|"point", nx, ny) 合成一帧右手结果,无摄像头也可全流程验证 */
+if (location.search.includes("debug")) {
+  window.__mockHand = (kind = "point", nx = 0.5, ny = 0.45) => {
+    const len = { fist:  [0.06, 0.06, 0.06, 0.06],      // 食/中/环/小指尖到腕距离
+                  open:  [0.36, 0.40, 0.37, 0.30],
+                  point: [0.38, 0.07, 0.07, 0.07] }[kind] || [0.30, 0.30, 0.30, 0.30];
+    const ext   = kind === "open" ? [1, 1, 1, 1]
+                : kind === "point" ? [1, 0, 0, 0] : [0, 0, 0, 0];
+    const frExt  = [0.42, 0.68, 0.84, 1.00];   // 伸展手指:tip 明显远于 pip
+    const frFold = [0.50, 0.90, 0.82, 0.72];   // 折叠手指:tip 收回 pip 之内
+    const dirs = [[-0.28, -0.26], [-0.10, -1], [0.02, -1], [0.14, -0.95], [0.26, -0.80]];
+    const chains = [[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12], [13, 14, 15, 16], [17, 18, 19, 20]];
+    const lm = [{ x: nx, y: ny + 0.30 }];
+    chains.forEach((ids, fi) => {
+      const isThumb = fi === 0, ti = isThumb ? 0 : fi - 1;
+      const fr = (!isThumb && ext[ti]) ? frExt : frFold;
+      ids.forEach((id, j) => {
+        const t = len[ti] * fr[j] * (isThumb ? 0.7 : 1);
+        lm[id] = { x: lm[0].x + dirs[fi][0] * t, y: lm[0].y + dirs[fi][1] * t };
+      });
+    });
+    gc.on = true; gc.videoReady = false;
+    gc.err = "调试模式:合成手部数据(按 M 切换握拳/手掌)";
+    onHandResults({ multiHandLandmarks: [lm], multiHandedness: [{ label: "Left" }] });
+  };
+}
+
+/* ================= 状态机 ================= */
+function startRun() {           // 从第一关开始的完整一局
+  score = 0; stress = 0.15; surviveT = 0; T = 0;
+  breakdowns = 0; bd.t = 0; flowHeat = 0; flowOn = false;
+  insideTotal = 0;
+  breath = { active: false, t: 0, cd: 0, rip: 0, mult: 1, src: "key" };
+  menuEl.classList.add("hidden");       // 离开开始界面
+  helpBtn.classList.add("hidden");
+  helpPanel.classList.add("hidden");
+  loadLevel(0);
+}
+function loadLevel(idx) {       // 进入指定关卡
+  levelIdx = idx;
+  levelT = 0; lvInside = 0; lvTotal = 0;
+  stress = Math.min(stress, 0.3);       // 关间喘息
+  breath = { active: false, t: 0, cd: 0, rip: 0, mult: 1, src: "key" };
+  resetEntities();
+  state = "play";
+  ov.classList.add("hidden");
+}
+function endLevel(cleared) {    // 本关结束:通过 → 下一关/通关;失败 → 结算
+  if (cleared) {
+    if (levelIdx < LEVELS.length - 1) {
+      state = "clear";
+      clearAuto = 6;
+      showClear();
+    } else {
+      state = "win";
+      showEnd(true);
+    }
+  } else {
+    state = "lose";
+    showEnd(false);
+  }
+}
+
+function showMenu() {
+  state = "menu";
+  ov.classList.add("hidden");
+  menuEl.classList.remove("hidden");     // 沉浸式开始界面(画布即背景)
+  helpBtn.classList.remove("hidden");
+  refreshCamStat();
+}
+function showClear() {
+  const cfg = cfgOf();
+  const rate = lvTotal > 1 ? Math.round(lvInside / lvTotal * 100) + "%" : "--";
+  const quote = QUOTE_CLEAR[Math.floor(Math.random() * QUOTE_CLEAR.length)];
+  ovCard.innerHTML = `
+    <h1>第${CN_NUM[levelIdx]}关 · 通过<span class="en">${cfg.en} cleared</span></h1>
+    <p class="quote">${quote}</p>
+    <div class="stats">
+      本关平静率 ${rate} · 已坚持 <b>${Math.floor(surviveT)} s</b> · 得分 <b>${Math.floor(score)}</b>
+    </div>
+    <button id="ovNext">下一关</button>
+    <div class="hint" id="ovAuto">6 秒后自动进入</div>`;
+  ov.classList.remove("hidden");
+  document.getElementById("ovNext").addEventListener("click", () => loadLevel(levelIdx + 1));
+}
+function showEnd(win) {
+  const quote = (win ? QUOTE_WIN : QUOTE_LOSE)[Math.floor(Math.random() * (win ? QUOTE_WIN : QUOTE_LOSE).length)];
+  /* 心理形态徽章:按得分评语 */
+  let badge, line;
+  if (score >= 1500)     { badge = "静 水 深 流"; line = "你与焦虑握手言和,像湖底一样安稳。"; }
+  else if (score >= 800) { badge = "心 湖 微 澜"; line = "微澜起伏,而你始终稳住船桨。"; }
+  else if (score >= 300) { badge = "心 浮 气 躁"; line = "风浪常在 —— 下一次,会更稳。"; }
+  else                   { badge = "风 中 之 烛"; line = "觉知到波动本身,已经是一种进步。"; }
+  ovCard.innerHTML = win ? `
+    <h1>通 关<span class="en">ALL LEVELS CLEARED</span></h1>
+    <div class="badge">${badge}</div>
+    <p class="quote">${line}</p>
+    <div class="stats">
+      累计坚持 <b>${Math.floor(surviveT)} s</b> · 最终得分 <b>${Math.floor(score)}</b><br>
+      崩溃 ${breakdowns} 次 · 平静率 ${fmtRate()}
+    </div>
+    <button id="ovRe">再 来 一 次</button>
+    <div class="hint">深呼吸不是逃避,是把自己轻轻带回中心。</div>` : `
+    <h1>被 拉 走 了<span class="en">BREATHE</span></h1>
+    <p class="quote">${quote}</p>
+    <div class="stats">
+      坚持了 <b>${Math.floor(surviveT)} s</b> · 到达 第${CN_NUM[levelIdx]}关 · 得分 <b>${Math.floor(score)}</b>
+    </div>
+    <button id="ovRe">再试本关</button>
+    <button id="ovMenu" class="ghost">回到开始</button>
+    <div class="hint">休息一下,深呼吸,随时回来。</div>`;
+  ov.classList.remove("hidden");
+  if (win) {
+    document.getElementById("ovRe").addEventListener("click", startRun);
+  } else {
+    document.getElementById("ovRe").addEventListener("click", () => { breakdowns = 0; loadLevel(levelIdx); });
+    document.getElementById("ovMenu").addEventListener("click", showMenu);
+  }
+}
+/* ================= 主更新 ================= */
+function update(dt) {
+  const cfg = cfgOf();
+  T += dt;
+  surviveT += dt;
+  levelT += dt;
+  lvTotal += dt;
+
+  /* --- 深呼吸:激活 3s(松手提前结束),冷却 5s;拉力倍率缓降至 0.5 --- */
+  if (breath.active) {
+    breath.t += dt;
+    breath.rip -= dt;
+    if (breath.rip <= 0) {
+      spawnRipple(width/2, height/2, 0.4, baseR() * 0.35);
+      breath.rip = 0.55;
+    }
+    if (breath.t >= 3) { breath.active = false; breath.cd = 5; }
+  } else {
+    breath.cd = Math.max(0, breath.cd - dt);
+  }
+  const mTgt = breath.active ? 0.5 : 1;
+  breath.mult += (mTgt - breath.mult) * (1 - Math.exp(-3 * dt));
+
+  /* --- 波形振幅:基础正弦 + 关卡化随机涌动 --- */
+  for (const w of waves) {
     w.surge *= Math.exp(-dt * 1.1);
     w.next -= dt;
     if (w.next <= 0) {
-      // 随机涌动：某一边的波形突然增强（随游戏时间缓慢变难）
-      const diff = Math.min(1, game.totalTime / 60);
-      w.surge += rand(0.45, 0.85) + 0.55 * diff;
-      w.next = rand(1.0, 2.6) + rand(0, 1.4) * (1 - diff);
-    }
-    const base = 0.42 + 0.30 * Math.sin(tNow * w.spd + w.ph);
-    return Math.min(2.1, Math.max(0.08, base + w.surge));
-  }
-
-  function physics(dt, tNow) {
-    const c = center(), R = safeR();
-    let fx = 0, fy = 0;
-    // 缓慢旋转的"焦虑气流"：让四股拉力不会完全抵消，红点总是被缓缓带往外侧
-    const gustA = tNow * 0.13 + Math.sin(tNow * 0.07) * 2;
-    const gustM = (0.22 + 0.2 * Math.sin(tNow * 0.11 + 1)) * PULL;
-    fx += Math.cos(gustA) * gustM;
-    fy += Math.sin(gustA) * gustM;
-    for (const w of game.waves) {
-      w.amp = waveAmp(w, dt, tNow);
-      const a = anchorOf(w);
-      const dx = a.x - game.pos.x, dy = a.y - game.pos.y;
-      const d = Math.hypot(dx, dy) || 1;
-      fx += dx / d * PULL * w.amp;
-      fy += dy / d * PULL * w.amp;
-    }
-    if (game.pointer.down) {
-      const dx = game.pointer.x - game.pos.x, dy = game.pointer.y - game.pos.y;
-      let ax = dx * DRAG_K, ay = dy * DRAG_K;
-      const m = Math.hypot(ax, ay);
-      if (m > DRAG_CAP) { ax *= DRAG_CAP / m; ay *= DRAG_CAP / m; }
-      fx += ax; fy += ay;
-    }
-    game.vel.x = (game.vel.x + fx * dt) * Math.exp(-DAMP * dt);
-    game.vel.y = (game.vel.y + fy * dt) * Math.exp(-DAMP * dt);
-    game.pos.x += game.vel.x * dt;
-    game.pos.y += game.vel.y * dt;
-
-    // 画布边界（轻微反弹）
-    const M = 8;
-    if (game.pos.x < M)     { game.pos.x = M;     game.vel.x *= -0.4; }
-    if (game.pos.x > W - M) { game.pos.x = W - M; game.vel.x *= -0.4; }
-    if (game.pos.y < M)     { game.pos.y = M;     game.vel.y *= -0.4; }
-    if (game.pos.y > H - M) { game.pos.y = H - M; game.vel.y *= -0.4; }
-
-    // 状态判定
-    const dist = Math.hypot(game.pos.x - c.x, game.pos.y - c.y);
-    const inside = dist <= R;
-    const stressTgt = inside ? 0 : 1;
-    game.stress += (stressTgt - game.stress) * (1 - Math.exp(-6 * dt));
-
-    game.totalTime += dt;
-    if (inside) {
-      game.insideTime += dt; game.streak += dt;
-      // 最佳纪录实时跟随当前连续平静时长
-      if (game.streak > game.best) {
-        game.best = game.streak;
-        if (tNow - (game._bestSaved || 0) > 2) {
-          game._bestSaved = tNow;
-          localStorage.setItem("anxiety_best", game.best.toFixed(1));
-        }
+      const pw = rand(cfg.surgePw[0], cfg.surgePw[1]);
+      w.surge += pw;
+      if (cfg.twin) {          // 风暴关:相邻波形一同涌动(多维风暴)
+        const other = waves[(waves.indexOf(w) + 1) % waves.length];
+        other.surge += pw * 0.7;
       }
-    } else {
-      if (game.streak > 0) localStorage.setItem("anxiety_best", game.best.toFixed(1));
-      game.streak = 0;
+      w.next = rand(cfg.surgeIv[0], cfg.surgeIv[1]);
     }
-    // 出圈瞬间：震屏 + 红闪
-    if (game._wasInside && !inside) { game.shake = 1; game.flash = 1; }
-    game._wasInside = inside;
-    game.shake *= Math.exp(-4 * dt);
-    game.flash *= Math.exp(-2.5 * dt);
-
-    // 螺旋随偏移加速 + 抖动
-    const dev = clamp(dist / R, 0, 2);
-    for (const s of game.spirals) {
-      s.rot += (0.4 + 3.2 * dev * dev + 4.5 * game.stress) * s.dir * s.spd * dt;
-      s.jit = (Math.sin(tNow * 17 + s.ph * 9) + Math.sin(tNow * 29 + s.ph * 5)) * 0.5
-              * (0.04 + 0.22 * dev + 0.3 * game.stress);
-    }
-    game.pointer.near = Math.hypot(game.pointer.x - game.pos.x, game.pointer.y - game.pos.y) < 90;
+    w.amp = clamp(0.45 + 0.30 * Math.sin(T * w.spd + w.ph) + w.surge, 0.08, 2.1);
   }
 
-  // ---------- 绘制 ----------
-  function drawWave(w, tNow, colW, colD, st) {
+  /* --- 力场:四方拉力(关卡系数 × 呼吸倍率) + 气流(关卡系数) + 指针 --- */
+  let fx = 0, fy = 0;
+  const gustA = T * 0.12 + Math.sin(T * 0.07) * 2;
+  const gustM = cfg.gust * (0.28 + 0.2 * Math.sin(T * 0.1 + 1)) * PULL;
+  fx += Math.cos(gustA) * gustM;
+  fy += Math.sin(gustA) * gustM;
+  for (const w of waves) {
     const a = anchorOf(w);
-    const amp = w.amp || 0.3;
-    const horiz = (w.side === "top" || w.side === "bottom");
-    const L = (horiz ? W : H) * 0.5;
-    ctx.beginPath();
-    for (let u = 0; u <= 1.0001; u += 1 / 110) {
-      const env = Math.sin(u * Math.PI);
-      const off = Math.sin(u * L * w.freq + tNow * w.spd + w.ph) * amp * 13 * env;
-      const x = horiz ? a.x - L / 2 + u * L : a.x + off;
-      const y = horiz ? a.y + off : a.y - L / 2 + u * L;
-      u === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-    }
-    ctx.strokeStyle = colW;
-    ctx.globalAlpha = 0.45 + 0.35 * clamp(amp, 0, 1) + 0.2 * st;
-    ctx.lineWidth = 2;
-    ctx.stroke();
-    ctx.globalAlpha = 1;
+    const dx = a.x - dot.x, dy = a.y - dot.y;
+    const d = Math.hypot(dx, dy) || 1;
+    const f = PULL * cfg.pull * breath.mult * w.amp;
+    fx += dx / d * f;
+    fy += dy / d * f;
+  }
+  /* --- 指针:手势开启且有手 → 食指尖接管(张开手掌=松开);否则用鼠标/触摸 --- */
+  const ctl = (gc.on && gc.seen)
+    ? { x: gc.x, y: gc.y, down: gc.gesture !== GESTURE.OPEN }
+    : ptr;
+  if (ctl.down && bd.t <= 0) {
+    let ax = (ctl.x - dot.x) * DRAG_K, ay = (ctl.y - dot.y) * DRAG_K;
+    const m = Math.hypot(ax, ay);
+    if (m > DRAG_CAP) { ax *= DRAG_CAP / m; ay *= DRAG_CAP / m; }
+    fx += ax; fy += ay;
+  }
+  dot.vx = (dot.vx + fx * dt) * Math.exp(-DAMP * dt);
+  dot.vy = (dot.vy + fy * dt) * Math.exp(-DAMP * dt);
+  dot.x += dot.vx * dt;
+  dot.y += dot.vy * dt;
 
-    // 锚点小节点
-    ctx.beginPath();
-    ctx.arc(a.x, a.y, 3.5, 0, 6.2832);
-    ctx.fillStyle = colW;
-    ctx.fill();
+  const M = 10;
+  if (dot.x < M)     { dot.x = M;     dot.vx *= -0.4; }
+  if (dot.x > width-M)  { dot.x = width-M;  dot.vx *= -0.4; }
+  if (dot.y < M)     { dot.y = M;     dot.vy *= -0.4; }
+  if (dot.y > height-M) { dot.y = height-M; dot.vy *= -0.4; }
+
+  /* --- 圈内/圈外 → 压力值(圈外上升速率随关卡提高) --- */
+  const c = center(), R = safeR();
+  const dist = Math.hypot(dot.x - c.x, dot.y - c.y);
+  const inside = dist <= R;
+  if (inside) stress -= (flowOn ? 0.09 : 0.05) * dt;
+  else        stress += cfg.up * dt;
+  stress = clamp(stress, 0, 1);
+
+  /* --- 心流:距圆心 < R×0.14 持续蓄能 --- */
+  if (inside && dist < R * 0.14) flowHeat += dt;
+  else flowHeat = Math.max(0, flowHeat - dt * 2);
+  const wasFlow = flowOn;
+  flowOn = flowHeat > 1;
+  if (flowOn && !wasFlow) spawnRipple(dot.x, dot.y, 0.5, 20);
+
+  /* --- 压力满格 → 短暂崩溃 --- */
+  if (stress >= 1 && bd.t <= 0) {
+    breakdowns++;
+    bd.t = 2.4;
+    shake = 1;
+    score = Math.round(score * 0.6);
+    stress = 0.42;
+    spawnRipple(c.x, c.y, 0.6, R * 0.4);
+    if (breakdowns >= BD_MAX) { setTimeout(() => { if (state === "play") endLevel(false); }, 1400); }
+  }
+  bd.t = Math.max(0, bd.t - dt);
+  shake *= Math.exp(-3 * dt);
+
+  /* --- 计分 --- */
+  if (inside) { score += (flowOn ? 30 : 10) * dt; insideTotal += dt; lvInside += dt; }
+
+  /* --- 正念粒子 --- */
+  for (const p of particles) {
+    p.vx += Math.sin(T * 0.7 + p.ph) * 6 * dt;
+    p.vy += Math.cos(T * 0.6 + p.ph * 2) * 6 * dt;
+    p.vx = clamp(p.vx, -22, 22); p.vy = clamp(p.vy, -22, 22);
+    p.x += p.vx * dt; p.y += p.vy * dt;
+    if (p.x < 40 || p.x > width - 40) p.vx *= -1;
+    if (p.y < 40 || p.y > height - 40) p.vy *= -1;
+    if (Math.hypot(p.x - dot.x, p.y - dot.y) < 18) {
+      score += 25;
+      spawnRipple(p.x, p.y, 0.5, 8);
+      Object.assign(p, newParticle());
+    }
   }
 
-  function drawDashLine(w, colD, st) {
-    const a = anchorOf(w);
-    const amp = w.amp || 0.3;
-    ctx.setLineDash([6, 7]);
-    ctx.beginPath();
-    ctx.moveTo(game.pos.x, game.pos.y);
-    ctx.lineTo(a.x, a.y);
-    ctx.strokeStyle = colD;
-    ctx.globalAlpha = 0.12 + 0.45 * clamp(amp / 1.5, 0, 1) + 0.25 * st;
-    ctx.lineWidth = 1 + st * 0.8;
-    ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.globalAlpha = 1;
+  /* --- 水波纹 --- */
+  for (const rp of ripples) { rp.r += rp.v * dt; rp.v *= 1.02; rp.a -= 0.30 * dt; }
+  while (ripples.length && ripples[0].a <= 0) ripples.shift();
+
+  /* --- 螺旋 --- */
+  const dev = clamp(dist / R, 0, 2);
+  const calm = flowOn ? 0.15 : 1;
+  for (const s of spirals) {
+    s.rot += (0.4 + 3.0 * dev * dev + 3.5 * stress) * s.dir * s.spd * calm * dt;
+    s.jit = (Math.sin(T * 15 + s.ph * 9) + Math.sin(T * 27 + s.ph * 5)) * 0.5
+          * (0.03 + 0.2 * dev + 0.28 * stress) * (flowOn ? 0.25 : 1);
   }
 
-  function drawSpiral(s, R, colS, st) {
-    const T = s.turns * 6.2832;
-    const rMax = R * s.r;
-    ctx.beginPath();
-    const N = 90;
-    for (let k = 0; k <= N; k++) {
-      const t = (k / N) * T;
-      const r = 5 + (rMax - 5) * (k / N);
-      const a = t * s.dir + s.rot + s.jit * Math.sin(k * 0.6);
-      const x = game.pos.x + Math.cos(a) * r;
-      const y = game.pos.y + Math.sin(a) * r * 0.96;
-      k === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-    }
-    ctx.strokeStyle = colS;
-    ctx.globalAlpha = 0.38 + 0.25 * st;
-    ctx.lineWidth = 1.6;
-    ctx.stroke();
-    ctx.globalAlpha = 1;
+  /* --- 本关时长结束 → 通过 --- */
+  if (levelT >= cfg.dur) endLevel(true);
+}
+
+function spawnRipple(x, y, a, r0) {
+  ripples.push({ x, y, r: r0 || 12, v: 230, a });
+  if (ripples.length > 16) ripples.shift();
+}
+function anchorOf(w) {
+  const m = 32;
+  switch (w.side) {
+    case "top":    return { x: width / 2, y: m };
+    case "bottom": return { x: width / 2, y: height - m };
+    case "left":   return { x: m, y: height / 2 };
+    case "right":  return { x: width - m, y: height / 2 };
+  }
+}
+
+/* ================= 绘制 ================= */
+function draw() {
+  const dt = clamp(deltaTime / 1000, 0, 0.05);
+
+  /* 过关界面:倒计时归零自动进入下一关(按钮亦可) */
+  if (state === "clear") {
+    clearAuto -= dt;
+    const el = document.getElementById("ovAuto");
+    if (el) el.textContent = Math.max(0, Math.ceil(clearAuto)) + " 秒后自动进入";
+    if (clearAuto <= 0) { loadLevel(levelIdx + 1); return; }
   }
 
-  function draw(tNow) {
-    const st = game.stress;
-    const c = center(), R = safeR();
-    const colBg = mix(C.bg[0], C.bg[1], st);
-    const colCi = mix(C.circle[0], C.circle[1], st);
-    const colW  = mix(C.wave[0], C.wave[1], st);
-    const colD  = mix(C.dash[0], C.dash[1], st);
-    const colS  = mix(C.spiral[0], C.spiral[1], st);
-    const colDot= mix(C.dot[0], C.dot[1], st);
+  if (state === "play") update(dt);
 
-    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-    // 震屏
-    if (game.shake > 0.01) {
-      ctx.translate((Math.random() - 0.5) * game.shake * 12, (Math.random() - 0.5) * game.shake * 12);
+  /* 开始界面:画布以"夜色版"动态场景直接作为全屏背景 */
+  if (state === "menu") { menuIdle(dt); drawMenuScene(); return; }
+
+  const c = center(), R = safeR();
+  const dist = Math.hypot(dot.x - c.x, dot.y - c.y);
+  const inside = dist <= R;
+  const dev = clamp(dist / R, 0, 2);
+  const danger = clamp(stress * 1.4 - 0.25, 0, 1);
+  dangerLvl = danger;
+
+  background(P.paper);   // 恒定纯白:焦虑反馈交给波形/圆环/螺旋的颜色变化
+  push();
+  if (shake > 0.01) translate(rand(-1,1) * shake * 10, rand(-1,1) * shake * 10);
+
+  push();
+  tint(255, 60);
+  image(grain, 0, 0);
+  pop();
+
+  /* 安全区收缩预告(第三关:最终半径虚线) */
+  if (state === "play" && levelIdx === 2) {
+    const rEnd = baseR() * cfgOf().r1;
+    if (rEnd < R - 4) {
+      noFill();
+      stroke(59, 58, 54, 70);
+      drawingContext.setLineDash([4, 9]);
+      strokeWeight(1.2);
+      circle(c.x, c.y, rEnd * 2);
+      drawingContext.setLineDash([]);
     }
-    ctx.fillStyle = colBg;
-    ctx.fillRect(-20, -20, W + 40, H + 40);
-
-    // 焦虑红晕
-    if (st > 0.02) {
-      const g = ctx.createRadialGradient(c.x, c.y, R * 0.5, c.x, c.y, Math.max(W, H) * 0.75);
-      g.addColorStop(0, "rgba(224,72,62,0)");
-      g.addColorStop(1, `rgba(224,72,62,${0.22 * st})`);
-      ctx.fillStyle = g;
-      ctx.fillRect(-20, -20, W + 40, H + 40);
-    }
-
-    // 安全圈（平静时轻微呼吸填充）
-    ctx.beginPath();
-    ctx.arc(c.x, c.y, R, 0, 6.2832);
-    const breath = 0.025 + 0.012 * Math.sin(tNow * 1.6);
-    ctx.fillStyle = `rgba(67,83,217,${(1 - st) * breath})`;
-    ctx.fill();
-    ctx.strokeStyle = colCi;
-    ctx.lineWidth = 2 + st * 1.2 + game.flash * 4;
-    if (st > 0.5) ctx.setLineDash([10, 6]);
-    ctx.stroke();
-    ctx.setLineDash([]);
-
-    // 连续平静进度弧（30 秒满一圈）
-    const frac = clamp(game.streak / 30, 0, 1);
-    if (frac > 0.002) {
-      ctx.beginPath();
-      ctx.arc(c.x, c.y, R + 12, -Math.PI / 2, -Math.PI / 2 + frac * 6.2832);
-      ctx.strokeStyle = colW;
-      ctx.globalAlpha = 0.55;
-      ctx.lineWidth = 3;
-      ctx.lineCap = "round";
-      ctx.stroke();
-      ctx.globalAlpha = 1;
-      ctx.lineCap = "butt";
-    }
-
-    // 波形 → 虚线 → 螺旋 → 红点
-    for (const w of game.waves) drawWave(w, tNow, colW, colD, st);
-    for (const w of game.waves) drawDashLine(w, colD, st);
-    for (const s of game.spirals) drawSpiral(s, R, colS, st);
-
-    // 出圈红闪描边
-    if (game.flash > 0.02) {
-      ctx.beginPath();
-      ctx.arc(c.x, c.y, R + 5, 0, 6.2832);
-      ctx.strokeStyle = `rgba(224,72,62,${game.flash * 0.8})`;
-      ctx.lineWidth = 5 * game.flash;
-      ctx.stroke();
-    }
-
-    // 抓取提示光环
-    if (!game.pointer.down && game.pointer.near && game.running) {
-      ctx.beginPath();
-      ctx.arc(game.pos.x, game.pos.y, 14 + 2 * Math.sin(tNow * 6), 0, 6.2832);
-      ctx.strokeStyle = colDot;
-      ctx.globalAlpha = 0.5;
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
-      ctx.globalAlpha = 1;
-    }
-    // 红点（焦虑时脉动）
-    const pr = 7 + (game.pointer.down ? 1 : 0) + st * 1.5 * (0.5 + 0.5 * Math.sin(tNow * 9));
-    ctx.beginPath();
-    ctx.arc(game.pos.x, game.pos.y, pr, 0, 6.2832);
-    ctx.fillStyle = colDot;
-    ctx.fill();
-    ctx.beginPath();
-    ctx.arc(game.pos.x, game.pos.y, pr, 0, 6.2832);
-    ctx.strokeStyle = "rgba(255,255,255,0.85)";
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
   }
 
-  // ---------- HUD ----------
-  const elMood = document.getElementById("stMood");
-  const elStreak = document.getElementById("stStreak");
-  const elBest = document.getElementById("stBest");
-  const elRate = document.getElementById("stRate");
-  let hudT = 0;
-  function hud(dt) {
-    hudT -= dt;
-    if (hudT > 0) return;
-    hudT = 0.15;
-    const anxious = game.stress > 0.5;
-    elMood.textContent = anxious ? "焦虑" : "平静";
-    elMood.className = anxious ? "anxious" : "calm";
-    elStreak.textContent = game.streak.toFixed(1) + " s";
-    elBest.textContent = game.best.toFixed(1) + " s";
-    elRate.textContent = game.totalTime > 1
-      ? Math.round(game.insideTime / game.totalTime * 100) + "%" : "--";
+  /* 安全圈 */
+  noStroke();
+  fill(mixC("sage", "paper", 0.35) + "");
+  drawingContext.globalAlpha = lerp(0.05, 0.22, flowHeat) * (inside ? 1 : 0.4);
+  circle(c.x, c.y, R * 2);
+  drawingContext.globalAlpha = 1;
+  noFill();
+  stroke(mixC("ink", "rose", danger));
+  strokeWeight(2.2);
+  circle(c.x, c.y, R * 2);
+
+  for (const w of waves) drawWave(w, breath.mult);
+  for (const w of waves) drawPullLine(w);
+  drawParticles();
+
+  noFill();
+  for (const rp of ripples) {
+    stroke(mixC("mint", "wave", 0.25));
+    drawingContext.globalAlpha = Math.max(0, rp.a) * 0.9;
+    strokeWeight(2);
+    circle(rp.x, rp.y, rp.r * 2);
+  }
+  drawingContext.globalAlpha = 1;
+
+  for (const s of spirals) drawSpiral(s, R, flowOn, dev);
+
+  if (flowOn && state === "play") {
+    noFill();
+    stroke(P.sage + "");
+    drawingContext.globalAlpha = 0.5 + 0.2 * Math.sin(T * 3);
+    strokeWeight(1.5);
+    circle(dot.x, dot.y, 34 + 4 * Math.sin(T * 2.4));
+    circle(dot.x, dot.y, 52 + 6 * Math.sin(T * 1.7));
+    drawingContext.globalAlpha = 1;
   }
 
-  // ---------- 主循环 ----------
-  let lastT = 0;
-  function frame(tms) {
-    requestAnimationFrame(frame);
-    const t = tms / 1000;
-    const dt = clamp(lastT ? t - lastT : 0.016, 0, 0.05);
-    lastT = t;
-    if (!W || !H) return;
-    if (!game.running) {
-      // 开场演出：波形轻摆，红点居中
-      const c = center();
-      game.pos.x = c.x; game.pos.y = c.y;
-      for (const w of game.waves) w.amp = waveAmp(w, dt, t);
-      draw(t);
-      return;
+  noStroke();
+  fill(mixC("dot", "rose", danger * 0.5));
+  circle(dot.x, dot.y, 14);
+  noFill();
+  stroke(255, 255, 255, 220);
+  strokeWeight(1.5);
+  circle(dot.x, dot.y, 15);
+
+  drawHUD(inside);
+  drawGesturePanel();
+
+  if (bd.t > 0) {
+    const a = clamp(bd.t / 2.4, 0, 1);
+    noStroke();
+    fill(59, 58, 54, 150 * a);
+    rect(-20, -20, width + 40, height + 40);
+    fill(255, 255, 255, 235 * a);
+    textAlign(CENTER, CENTER);
+    textSize(30);
+    textFont("Songti SC, Noto Serif SC, serif");
+    text("崩  溃", width / 2, height / 2 - 8);
+    textSize(13);
+    text("休息一下,把注意力带回来", width / 2, height / 2 + 26);
+  }
+  pop();
+}
+
+/* 单侧正弦波(风暴关叠加二次谐波) */
+function drawWave(w, m) {
+  const a = anchorOf(w);
+  const horiz = (w.side === "top" || w.side === "bottom");
+  const L = (horiz ? width : height) * 0.5;
+  const storm = state === "play" && levelIdx === 2;
+  noFill();
+  stroke(mixC("wave", "waveD", w.amp / 2.1));
+  drawingContext.globalAlpha = lerp(0.9, 0.45, 1 - m);
+  strokeWeight(2);
+  beginShape();
+  for (let u = 0; u <= 1.001; u += 1 / 110) {
+    const env = Math.sin(u * PI);
+    let off = Math.sin(u * L * w.freq + T * w.spd + w.ph) * w.amp * 13 * env;
+    if (storm) off += Math.sin(u * L * w.freq * 2.7 + T * w.spd * 1.6 + w.ph * 2) * w.amp * 5 * env;
+    const x = horiz ? a.x - L / 2 + u * L : a.x + off;
+    const y = horiz ? a.y + off : a.y - L / 2 + u * L;
+    vertex(x, y);
+  }
+  endShape();
+  drawingContext.globalAlpha = 1;
+  noStroke();
+  fill(mixC("wave", "waveD", w.amp / 2.1));
+  circle(a.x, a.y, 7);
+}
+
+function drawPullLine(w) {
+  const a = anchorOf(w);
+  drawingContext.setLineDash([6, 7]);
+  stroke(mixC("wave", "rose", dangerLvl * 0.6));
+  drawingContext.globalAlpha = 0.14 + 0.5 * clamp(w.amp / 1.6, 0, 1);
+  strokeWeight(1.2);
+  line(dot.x, dot.y, a.x, a.y);
+  drawingContext.setLineDash([]);
+  drawingContext.globalAlpha = 1;
+}
+
+function drawParticles() {
+  for (const p of particles) {
+    const pulse = 1 + 0.25 * Math.sin(T * 2.2 + p.ph);
+    const col = P[p.tone];
+    drawingContext.shadowBlur = 16;
+    drawingContext.shadowColor = col;
+    noStroke();
+    fill(col + "");
+    circle(p.x, p.y, 6 * pulse);
+    drawingContext.shadowBlur = 0;
+    fill(255, 255, 255, 210);
+    circle(p.x, p.y, 2.4);
+  }
+}
+
+function drawSpiral(s, R, flowOn, dev) {
+  const T2 = s.turns * TWO_PI;
+  const rMax = R * s.r;
+  noFill();
+  stroke(P.spiral);
+  drawingContext.globalAlpha = (flowOn ? 0.12 : 0.45) + 0.2 * clamp(dev - 1, 0, 1);
+  strokeWeight(1.4);
+  beginShape();
+  const N = 90;
+  for (let k = 0; k <= N; k++) {
+    const t = (k / N) * T2;
+    const r = 5 + (rMax - 5) * (k / N);
+    const a = t * s.dir + s.rot + s.jit * Math.sin(k * 0.6);
+    vertex(dot.x + Math.cos(a) * r, dot.y + Math.sin(a) * r * 0.96);
+  }
+  endShape();
+  drawingContext.globalAlpha = 1;
+}
+
+/* HUD:心律条 / 分数 / 关卡进度 / 坚持时间 / 深呼吸冷却 */
+function drawHUD(inside) {
+  const cfg = cfgOf();
+  textFont("Songti SC, Noto Serif SC, serif");
+
+  /* 心律条(顶部居中) */
+  const bw = Math.min(width * 0.42, 460), bx = width / 2 - bw / 2, by = 22;
+  const beat = 1 + 0.18 * Math.sin(T * (1.2 + stress * 5) * TWO_PI);
+  noStroke();
+  fill(59, 58, 54, 40);
+  rect(bx - 2, by - 2, bw + 4, 10, 5);
+  fill(mixC("sage", "rose", stress));
+  rect(bx, by, bw * stress, 6 * beat, 3);
+  fill(P.text);
+  textAlign(RIGHT, CENTER);
+  textSize(12);
+  text("心 律", bx - 14, by + 3);
+  textAlign(LEFT, CENTER);
+  text(Math.round(stress * 100), bx + bw + 12, by + 3);
+  if (stress > 0.75) {
+    fill(mixC("rose", "dot", 0.4));
+    text(gc.on ? "握拳 · 深呼吸" : "长按空格 · 深呼吸", bx + bw + 52, by + 3);
+  }
+
+  /* 左上:坚持时间 + 关卡名 + 关内进度条 */
+  textAlign(LEFT, TOP);
+  fill(P.text);
+  textSize(12);
+  text("坚持 " + Math.floor(surviveT) + " s", 24, 14);
+  fill(154, 148, 139);
+  text("关卡 " + cfg.name, 24, 34);
+  const lw = 120, lx = 24, ly = 56;
+  fill(59, 58, 54, 40);
+  rect(lx, ly, lw, 5, 2.5);
+  fill(P.gold);
+  rect(lx, ly, lw * clamp(levelT / cfg.dur, 0, 1), 5, 2.5);
+  fill(154, 148, 139);
+  textSize(11);
+  text(Math.round(clamp(levelT / cfg.dur, 0, 1) * 100) + "%", lx + lw + 8, ly - 3);
+
+  /* 右上:分数(+心流倍率提示) */
+  textAlign(RIGHT, TOP);
+  fill(P.text);
+  textSize(20);
+  text(Math.floor(score), width - 26, 18);
+  textSize(11);
+  if (flowOn) { fill(P.sage); text("心流 ×3", width - 26, 46); }
+  textAlign(LEFT, TOP);
+
+  /* 右下:深呼吸状态小圆 */
+  const bx2 = width - 52, by2 = height - 52;
+  noFill();
+  stroke(59, 58, 54, 60);
+  strokeWeight(4);
+  circle(bx2, by2, 44);
+  if (breath.cd > 0) {
+    stroke(P.sage);
+    arc(bx2, by2, 44, 44, -HALF_PI, -HALF_PI + (1 - breath.cd / 5) * TWO_PI);
+  } else if (breath.active) {
+    stroke(P.sage);
+    arc(bx2, by2, 44, 44, -HALF_PI, -HALF_PI + (breath.t / 3) * TWO_PI);
+  }
+  noStroke();
+  fill(P.text);
+  textAlign(CENTER, CENTER);
+  textSize(10);
+  text(breath.active ? "呼吸中" : (breath.cd > 0 ? breath.cd.toFixed(1) : (gc.on ? "握拳" : "空格")), bx2, by2);
+  textAlign(LEFT, TOP);
+}
+
+/* ================= 流程入口 ================= */
+const ov = document.getElementById("overlay");
+const ovCard = document.getElementById("ovCard");
+const menuEl = document.getElementById("menu");
+const helpBtn = document.getElementById("helpBtn");
+const helpPanel = document.getElementById("helpPanel");
+let insideTotal = 0;         // 圈内累计时长(平静率)
+
+function refreshCamStat() {
+  document.getElementById("camStat").textContent =
+    gc.on ? "手势已开启 · 食尖拖拽红点 · 握拳 = 深呼吸 · 张开手掌 = 释放(按 G 关闭)"
+          : "手势未开启 · 点按钮或按 G 开启 · 无摄像头时鼠标照常可用";
+}
+document.getElementById("ovGo").addEventListener("click", startRun);
+document.getElementById("ovCam").addEventListener("click", async () => {
+  const st = document.getElementById("camStat");
+  if (gc.on) { stopGestureControl(); refreshCamStat(); return; }
+  st.textContent = "手势:正在请求摄像头并加载模型 …";
+  const ok = await startGestureControl();
+  if (ok) refreshCamStat();
+  else st.textContent = "手势开启失败:" + gc.err + " · 可继续用鼠标游玩";
+});
+helpBtn.addEventListener("click", () => helpPanel.classList.remove("hidden"));
+document.getElementById("helpClose").addEventListener("click", () => helpPanel.classList.add("hidden"));
+helpPanel.addEventListener("click", e => { if (e.target === helpPanel) helpPanel.classList.add("hidden"); });
+
+/* ================= 开始界面 · 沉浸式动态背景 ================= */
+/* 菜单态的低速演化:让波形/粒子/螺旋在背后持续呼吸 */
+function menuIdle(dt) {
+  T += dt;
+  for (const w of waves)
+    w.amp = clamp(0.5 + 0.28 * Math.sin(T * w.spd * 0.55 + w.ph)
+                    + 0.12 * Math.sin(T * 0.33 + w.ph * 2), 0.08, 2.1);
+  for (const s of spirals) { s.rot += 0.25 * s.dir * s.spd * dt; s.jit = 0; }
+  for (const p of particles) {
+    p.vx += Math.sin(T * 0.7 + p.ph) * 6 * dt;
+    p.vy += Math.cos(T * 0.6 + p.ph * 2) * 6 * dt;
+    p.vx = clamp(p.vx, -18, 18); p.vy = clamp(p.vy, -18, 18);
+    p.x += p.vx * dt; p.y += p.vy * dt;
+    if (p.x < 40 || p.x > width - 40) p.vx *= -1;
+    if (p.y < 40 || p.y > height - 40) p.vy *= -1;
+  }
+}
+
+/* 暖白宣纸画布:波形 + 呼吸圆 + 螺旋 + 中央红点,青灰深线保证对比度 */
+function drawMenuScene() {
+  background(P.paper);
+  push();
+  tint(255, 46);
+  image(grain, 0, 0);
+  pop();
+
+  const c = center(), R = safeR();
+
+  /* 呼吸安全圈 */
+  noStroke();
+  fill(163, 179, 154, 16);
+  circle(c.x, c.y, R * 2);
+  noFill();
+  stroke(59, 58, 54, 105);
+  strokeWeight(1.8);
+  circle(c.x, c.y, R * 2);
+
+  for (const w of waves) drawMenuWave(w);
+  for (const s of spirals) drawSpiral(s, R, false, 0);
+  drawParticles();
+
+  /* 中央红点:缓慢呼吸的彩色光核 */
+  const pulse = 1 + 0.16 * Math.sin(T * 1.3);
+  drawingContext.shadowBlur = 26;
+  drawingContext.shadowColor = P.dot;
+  noStroke();
+  fill(P.dot);
+  circle(c.x, c.y, 12 * pulse);
+  drawingContext.shadowBlur = 0;
+  noFill();
+  stroke(181, 101, 79, 60);
+  strokeWeight(1);
+  circle(c.x, c.y, 16 * pulse);
+}
+
+function drawMenuWave(w) {
+  const a = anchorOf(w);
+  const horiz = (w.side === "top" || w.side === "bottom");
+  const L = (horiz ? width : height) * 0.5;
+  noFill();
+  stroke(100, 121, 140, 150);            // 青灰深线,米白底上清晰
+  strokeWeight(1.6);
+  beginShape();
+  for (let u = 0; u <= 1.001; u += 1 / 110) {
+    const env = Math.sin(u * PI);
+    const off = Math.sin(u * L * w.freq + T * w.spd * 0.55 + w.ph) * w.amp * 13 * env;
+    const x = horiz ? a.x - L / 2 + u * L : a.x + off;
+    const y = horiz ? a.y + off : a.y - L / 2 + u * L;
+    vertex(x, y);
+  }
+  endShape();
+  noStroke();
+  fill(100, 121, 140, 110);
+  circle(a.x, a.y, 5);
+}
+
+/* 左下角:半透明摄像头镜像 + 手部骨骼连线 + 手势状态 */
+function drawGesturePanel() {
+  textFont("Songti SC, Noto Serif SC, serif");
+  if (!gc.on) {
+    if (gc.err || gc.gestureToast) {
+      noStroke();
+      fill(59, 58, 54, 110);
+      textAlign(LEFT, BOTTOM);
+      textSize(11);
+      text(gc.gestureToast ? "手势:" + gc.gestureToast : "手势:" + gc.err, 20, height - 14);
+      textAlign(LEFT, TOP);
     }
-    physics(dt, t);
-    draw(t);
-    hud(dt);
+    return;
+  }
+  const w = Math.min(224, width * 0.28), h = w * 3 / 4, x = 18, y = height - h - 30;
+
+  /* 面板底(半透明纸面) */
+  noStroke();
+  fill(255, 255, 255, 110);
+  rect(x - 6, y - 6, w + 12, h + 12, 10);
+
+  /* 摄像头镜像:低透明度 drawImage,不遮蔽主画面 */
+  if (gc.videoReady && camVideo && camVideo.readyState >= 2) {
+    drawingContext.save();
+    drawingContext.globalAlpha = 0.35;
+    drawingContext.translate(x + w, y);
+    drawingContext.scale(-1, 1);
+    drawingContext.drawImage(camVideo, 0, 0, w, h);
+    drawingContext.restore();
+  } else {
+    fill(59, 58, 54, 22);
+    rect(x, y, w, h, 6);
   }
 
-  initWaves();
-  initSpirals();
-  reset(true);
-  requestAnimationFrame(frame);
-})();
+  /* 手部骨骼连线 + 关节点 + 食指尖高亮 */
+  if (gc.raw.length >= 21) {
+    const px = i => x + (1 - gc.raw[i].x) * w;
+    const py = i => y + gc.raw[i].y * h;
+    noFill();
+    stroke(59, 58, 54, 150);
+    strokeWeight(1.4);
+    for (const [a, b] of HAND_LINKS) line(px(a), py(a), px(b), py(b));
+    noStroke();
+    fill(59, 58, 54, 160);
+    for (let i = 0; i < 21; i++) circle(px(i), py(i), i % 4 === 1 ? 5 : 3.4);
+    fill(P.dot);
+    circle(px(8), py(8), 9);
+  }
+
+  noFill();
+  stroke(59, 58, 54, 70);
+  strokeWeight(1);
+  rect(x - 6, y - 6, w + 12, h + 12, 10);
+
+  /* 状态行 */
+  noStroke();
+  fill(59, 58, 54, 200);
+  textAlign(LEFT, BOTTOM);
+  textSize(11);
+  const tag = { fist: "握拳 · 深呼吸保护", open: "张开 · 释放",
+                point: "指尖 · 拖拽中", none: "未识别手势" }[gc.gesture];
+  text((gc.seen ? gc.handLabel + " · " : "未检测到手 · ") + (tag || ""), x - 4, height - 8);
+  textAlign(LEFT, TOP);
+}
+
+function fmtRate() { return surviveT > 1 ? Math.round(insideTotal / surviveT * 100) + "%" : "--"; }
 </script>
 </body>
 </html>
+
