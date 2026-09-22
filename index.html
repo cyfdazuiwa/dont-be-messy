@@ -6,14 +6,14 @@
 <title>DON'T BE MESSY — 三个对抗混乱的互动实验</title>
 <link rel="preconnect" href="https://fonts.loli.net">
 <link rel="preconnect" href="https://gstatic.loli.net" crossorigin>
-<link href="https://fonts.loli.net/css2?family=Anton&family=ZCOOL+QingKe+HuangYou&family=Space+Mono:wght@400;700&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.loli.net/css2?family=Baloo+2:wght@600;700;800&family=ZCOOL+KuaiLe&family=Space+Mono:wght@400;700&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
 <style>
   :root{
     --bg:#F4F2ED;
     --fg:#111111;
     --pad:clamp(20px,4vw,64px);
-    --display:'Anton','Arial Narrow',sans-serif;
-    --cn-disp:'ZCOOL QingKe HuangYou','PingFang SC','Microsoft YaHei',sans-serif;
+    --display:'Baloo 2','Arial Rounded MT Bold','PingFang SC',sans-serif;
+    --cn-disp:'Baloo 2','ZCOOL KuaiLe','PingFang SC','Microsoft YaHei',sans-serif;
     --mono:'Space Mono','PingFang SC','Microsoft YaHei',monospace;
     --body:'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif;
   }
@@ -104,10 +104,10 @@
     display:flex;flex-direction:column;justify-content:center;position:relative;z-index:2;height:100%;
   }
   h1{
-    font-family:var(--display);font-weight:400;
-    font-size:clamp(64px,15vh,168px);line-height:.88;
-    text-transform:uppercase;letter-spacing:.005em;
-    margin:2vh 0 0;
+    font-family:var(--display);font-weight:700;
+    font-size:clamp(58px,14vh,150px);line-height:.98;
+    text-transform:uppercase;letter-spacing:.01em;
+    margin:1vh 0 0;
   }
   h1 .row{display:block}
   h1 .outline{color:transparent;-webkit-text-stroke:.022em var(--fg)}
@@ -117,7 +117,7 @@
     background:currentColor;transform:rotate(-2.2deg);
   }
   .cover-tagline{
-    margin-top:3vh;display:flex;align-items:center;gap:18px;
+    margin-top:2.2vh;display:flex;align-items:center;gap:18px;
   }
   .cover-tagline .bar{width:64px;height:2px;background:currentColor;flex:none;opacity:.8}
   .cover-tagline p{
@@ -125,23 +125,23 @@
   }
 
   /* 封面作品索引（参考 lonely-brainstorm 的 01/进入 列表） */
-  .cover-index{margin-top:3.5vh;max-width:760px}
+  .cover-index{margin-top:2.6vh;max-width:760px}
   .idx{
     display:grid;grid-template-columns:3.2em 1fr auto auto;align-items:baseline;gap:1.2em;
-    padding:1.7vh 10px;text-decoration:none;color:var(--fg);
+    padding:1.5vh 10px;text-decoration:none;color:var(--fg);
     border-top:1px solid color-mix(in srgb,var(--fg) 25%,transparent);
     transition:background .15s,color .15s,padding-left .15s;
   }
   .cover-index .idx:last-child{border-bottom:1px solid color-mix(in srgb,var(--fg) 25%,transparent)}
   .idx-no{font-family:var(--mono);font-size:12px;opacity:.6}
-  .idx-en{font-family:var(--display);font-size:clamp(17px,2.6vh,24px);letter-spacing:.03em}
+  .idx-en{font-family:var(--display);font-weight:700;font-size:clamp(17px,2.6vh,24px);letter-spacing:.03em}
   .idx-cn{font-family:var(--cn-disp);font-size:clamp(14px,2vh,17px);opacity:.65;letter-spacing:.12em}
   .idx-go{font-family:var(--mono);font-size:11px;letter-spacing:.2em}
   .idx:hover{background:var(--fg);color:var(--bg);padding-left:20px}
   .idx:hover .idx-no,.idx:hover .idx-cn{opacity:.8}
 
   .cover-meta{
-    margin-top:auto;padding-top:3vh;display:flex;justify-content:space-between;align-items:flex-end;
+    margin-top:auto;padding-top:2vh;display:flex;justify-content:space-between;align-items:flex-end;
     font-family:var(--mono);font-size:10.5px;font-weight:700;letter-spacing:.26em;text-transform:uppercase;opacity:.5;
   }
 
@@ -170,19 +170,19 @@
   }
   .big-num{
     position:absolute;top:-5vh;right:-1.5vw;z-index:0;
-    font-family:var(--display);font-size:clamp(130px,27vh,250px);line-height:1;
+    font-family:var(--display);font-weight:700;font-size:clamp(130px,27vh,250px);line-height:1;
     color:transparent;-webkit-text-stroke:2px rgba(17,17,17,.13);
     user-select:none;pointer-events:none;
   }
   .proj h2{
     position:relative;z-index:1;margin-top:2.2vh;
-    font-family:var(--display);font-weight:400;
-    font-size:clamp(46px,8.6vh,94px);line-height:.92;
-    text-transform:uppercase;letter-spacing:.008em;
+    font-family:var(--display);font-weight:700;
+    font-size:clamp(42px,8vh,84px);line-height:1.06;
+    text-transform:uppercase;letter-spacing:.012em;
   }
   .proj h2 .cn{
     display:block;font-family:var(--cn-disp);font-weight:400;
-    font-size:clamp(19px,2.7vh,25px);letter-spacing:.26em;
+    font-size:clamp(19px,2.7vh,25px);letter-spacing:.2em;
     margin-top:1.8vh;text-transform:none;opacity:.92;
   }
   .proj-desc{
@@ -236,8 +236,8 @@
     text-align:center;position:relative;z-index:2;
   }
   .end-title{
-    font-family:var(--display);font-weight:400;
-    font-size:clamp(76px,20vh,220px);line-height:.9;text-transform:uppercase;
+    font-family:var(--display);font-weight:700;
+    font-size:clamp(70px,19vh,200px);line-height:.98;text-transform:uppercase;
     margin-top:2.5vh;
   }
   .end-title .outline{color:transparent;-webkit-text-stroke:.02em var(--fg)}
