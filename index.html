@@ -4,16 +4,23 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>DON'T BE MESSY — 三个对抗混乱的互动实验</title>
+<link rel="preconnect" href="https://fonts.loli.net">
+<link rel="preconnect" href="https://gstatic.loli.net" crossorigin>
+<link href="https://fonts.loli.net/css2?family=Anton&family=ZCOOL+QingKe+HuangYou&family=Space+Mono:wght@400;700&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
 <style>
   :root{
     --bg:#F4F2ED;
     --fg:#111111;
     --pad:clamp(20px,4vw,64px);
+    --display:'Anton','Arial Narrow',sans-serif;
+    --cn-disp:'ZCOOL QingKe HuangYou','PingFang SC','Microsoft YaHei',sans-serif;
+    --mono:'Space Mono','PingFang SC','Microsoft YaHei',monospace;
+    --body:'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif;
   }
   *{margin:0;padding:0;box-sizing:border-box}
   html,body{height:100%}
   body{
-    font-family:"Futura","Futura PT","Avenir Next","Century Gothic","PingFang SC","Microsoft YaHei",sans-serif;
+    font-family:var(--body);
     background:var(--bg);color:var(--fg);
     overflow:hidden;
     letter-spacing:.02em;
@@ -40,7 +47,8 @@
     display:flex;justify-content:space-between;align-items:center;
     padding:18px var(--pad);
     pointer-events:none;
-    font-size:12px;font-weight:700;letter-spacing:.28em;text-transform:uppercase;
+    font-family:var(--mono);
+    font-size:11px;font-weight:700;letter-spacing:.28em;text-transform:uppercase;
   }
   .topbar .mark{display:flex;align-items:center;gap:10px}
   .topbar .dot{width:10px;height:10px;border-radius:50%;background:currentColor;opacity:.85}
@@ -48,10 +56,10 @@
 
   .rail{
     position:fixed;right:calc(var(--pad) * .45);top:50%;transform:translateY(-50%);
-    z-index:50;display:flex;flex-direction:column;gap:16px;
+    z-index:50;display:flex;flex-direction:column;gap:14px;
   }
   .rail a{
-    position:relative;width:34px;height:34px;display:grid;place-items:center;
+    position:relative;width:34px;height:30px;display:grid;place-items:center;
     text-decoration:none;color:var(--fg);
   }
   .rail a i{
@@ -62,59 +70,94 @@
   .rail a.on i{background:var(--fg);transform:scale(1.3)}
   .rail a span{
     position:absolute;right:38px;top:50%;transform:translateY(-50%);
-    font-size:10px;font-weight:700;letter-spacing:.2em;
+    font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.2em;
     opacity:0;transition:opacity .2s;white-space:nowrap;text-transform:uppercase;
   }
   .rail a:hover span{opacity:.7}
 
   /* ============ 通用 ============ */
-  .no-line{
-    display:flex;align-items:center;gap:12px;
-    font-size:12px;font-weight:700;letter-spacing:.3em;text-transform:uppercase;opacity:.75;
+  .kicker{
+    font-family:var(--mono);font-size:12px;font-weight:700;
+    letter-spacing:.32em;text-transform:uppercase;opacity:.75;
   }
-  .no-line::before{content:"";width:28px;height:2px;background:currentColor}
   .tag{
     display:inline-block;border:1px solid color-mix(in srgb,var(--fg) 38%,transparent);
-    padding:5px 12px;font-size:11px;font-weight:600;letter-spacing:.18em;
-    text-transform:uppercase;opacity:.9;
+    padding:4px 11px;font-family:var(--mono);font-size:10.5px;font-weight:400;
+    letter-spacing:.14em;text-transform:uppercase;opacity:.9;
   }
   .btn{
     display:inline-flex;align-items:center;gap:10px;
     background:var(--fg);color:var(--bg);text-decoration:none;
-    padding:12px 22px;font-size:12px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;
+    padding:12px 22px;font-family:var(--mono);font-size:11px;font-weight:700;
+    letter-spacing:.2em;text-transform:uppercase;
     transition:transform .15s,opacity .15s;
   }
   .btn:hover{transform:translateY(-2px);opacity:.88}
-  .hint{font-size:11px;letter-spacing:.12em;opacity:.55;line-height:1.8}
+  .btn.ghost{background:transparent;color:var(--fg);border:1px solid var(--fg)}
+  .btn.ghost:hover{background:var(--fg);color:var(--bg);opacity:1}
+  .hint{font-size:11px;letter-spacing:.1em;opacity:.55;line-height:1.8}
 
   /* ============ P0 封面 ============ */
   .cover{display:grid;grid-template-columns:1fr}
   .cover-inner{
-    padding:calc(var(--pad) + 40px) var(--pad) var(--pad);
+    padding:calc(var(--pad) + 34px) var(--pad) calc(var(--pad) + 34px);
     display:flex;flex-direction:column;justify-content:center;position:relative;z-index:2;height:100%;
   }
-  .kicker{font-size:13px;font-weight:700;letter-spacing:.34em;text-transform:uppercase;margin-bottom:3.5vh;opacity:.8}
   h1{
-    font-size:clamp(72px,16vh,190px);line-height:.92;font-weight:800;
-    text-transform:uppercase;letter-spacing:-.02em;
+    font-family:var(--display);font-weight:400;
+    font-size:clamp(64px,15vh,168px);line-height:.88;
+    text-transform:uppercase;letter-spacing:.005em;
+    margin:2vh 0 0;
   }
   h1 .row{display:block}
+  h1 .outline{color:transparent;-webkit-text-stroke:.022em var(--fg)}
   h1 .mess{position:relative;display:inline-block}
   h1 .mess s{
-    position:absolute;left:-.02em;right:-.02em;top:50%;height:.06em;
+    position:absolute;left:-.02em;right:-.02em;top:47%;height:.065em;
     background:currentColor;transform:rotate(-2.2deg);
   }
-  .cover-sub{margin-top:4.5vh;display:flex;align-items:center;gap:18px}
-  .cover-sub .bar{width:72px;height:2px;background:currentColor;flex:none;opacity:.8}
-  .cover-sub p{font-size:clamp(14px,2vh,17px);letter-spacing:.24em;font-weight:600}
-  .cover-meta{
-    margin-top:auto;padding-top:4vh;display:flex;justify-content:space-between;align-items:flex-end;
-    font-size:11px;font-weight:700;letter-spacing:.26em;text-transform:uppercase;opacity:.55;
+  .cover-tagline{
+    margin-top:3vh;display:flex;align-items:center;gap:18px;
   }
+  .cover-tagline .bar{width:64px;height:2px;background:currentColor;flex:none;opacity:.8}
+  .cover-tagline p{
+    font-family:var(--cn-disp);font-size:clamp(17px,2.4vh,22px);letter-spacing:.3em;
+  }
+
+  /* 封面作品索引（参考 lonely-brainstorm 的 01/进入 列表） */
+  .cover-index{margin-top:3.5vh;max-width:760px}
+  .idx{
+    display:grid;grid-template-columns:3.2em 1fr auto auto;align-items:baseline;gap:1.2em;
+    padding:1.7vh 10px;text-decoration:none;color:var(--fg);
+    border-top:1px solid color-mix(in srgb,var(--fg) 25%,transparent);
+    transition:background .15s,color .15s,padding-left .15s;
+  }
+  .cover-index .idx:last-child{border-bottom:1px solid color-mix(in srgb,var(--fg) 25%,transparent)}
+  .idx-no{font-family:var(--mono);font-size:12px;opacity:.6}
+  .idx-en{font-family:var(--display);font-size:clamp(17px,2.6vh,24px);letter-spacing:.03em}
+  .idx-cn{font-family:var(--cn-disp);font-size:clamp(14px,2vh,17px);opacity:.65;letter-spacing:.12em}
+  .idx-go{font-family:var(--mono);font-size:11px;letter-spacing:.2em}
+  .idx:hover{background:var(--fg);color:var(--bg);padding-left:20px}
+  .idx:hover .idx-no,.idx:hover .idx-cn{opacity:.8}
+
+  .cover-meta{
+    margin-top:auto;padding-top:3vh;display:flex;justify-content:space-between;align-items:flex-end;
+    font-family:var(--mono);font-size:10.5px;font-weight:700;letter-spacing:.26em;text-transform:uppercase;opacity:.5;
+  }
+
+  /* 封面右缘竖排图形字 */
+  .vertical-cn{
+    position:absolute;right:calc(var(--pad) * .55);top:50%;transform:translateY(-50%);
+    writing-mode:vertical-rl;font-family:var(--cn-disp);
+    font-size:clamp(56px,13vh,132px);letter-spacing:.22em;line-height:1;
+    color:transparent;-webkit-text-stroke:1.5px rgba(17,17,17,.28);
+    user-select:none;pointer-events:none;z-index:1;
+  }
+
   .scroll-hint{
-    position:absolute;left:var(--pad);bottom:26px;z-index:3;
+    position:absolute;left:var(--pad);bottom:24px;z-index:3;
     display:flex;align-items:center;gap:12px;
-    font-size:11px;font-weight:700;letter-spacing:.3em;text-transform:uppercase;
+    font-family:var(--mono);font-size:10.5px;font-weight:700;letter-spacing:.3em;text-transform:uppercase;
   }
   .scroll-hint .arrow{animation:dip 1.6s ease-in-out infinite;font-size:15px}
   @keyframes dip{0%,100%{transform:translateY(-3px)}50%{transform:translateY(4px)}}
@@ -122,21 +165,29 @@
   /* ============ 项目页 ============ */
   .proj{display:grid;grid-template-columns:minmax(320px,.66fr) 1.34fr}
   .proj-info{
-    padding:calc(var(--pad) + 44px) 36px var(--pad) var(--pad);
+    padding:calc(var(--pad) + 40px) 36px var(--pad) var(--pad);
     display:flex;flex-direction:column;position:relative;z-index:2;
   }
+  .big-num{
+    position:absolute;top:-5vh;right:-1.5vw;z-index:0;
+    font-family:var(--display);font-size:clamp(130px,27vh,250px);line-height:1;
+    color:transparent;-webkit-text-stroke:2px rgba(17,17,17,.13);
+    user-select:none;pointer-events:none;
+  }
   .proj h2{
-    margin-top:2vh;
-    font-size:clamp(40px,7.4vh,80px);line-height:1;text-transform:uppercase;
-    font-weight:800;letter-spacing:-.015em;
+    position:relative;z-index:1;margin-top:2.2vh;
+    font-family:var(--display);font-weight:400;
+    font-size:clamp(46px,8.6vh,94px);line-height:.92;
+    text-transform:uppercase;letter-spacing:.008em;
   }
   .proj h2 .cn{
-    display:block;font-size:clamp(15px,2.1vh,19px);font-weight:600;
-    letter-spacing:.34em;margin-top:2vh;text-transform:none;opacity:.8;
+    display:block;font-family:var(--cn-disp);font-weight:400;
+    font-size:clamp(19px,2.7vh,25px);letter-spacing:.26em;
+    margin-top:1.8vh;text-transform:none;opacity:.92;
   }
   .proj-desc{
-    margin:3vh 0;font-size:clamp(14px,1.9vh,16px);line-height:1.95;
-    letter-spacing:.05em;max-width:36em;
+    margin:3vh 0;font-size:clamp(14px,1.85vh,16px);font-weight:300;
+    line-height:2;letter-spacing:.04em;max-width:36em;
   }
   .proj-desc b{font-weight:700;border-bottom:2px solid currentColor;padding-bottom:1px}
   .meta{margin-top:auto;display:flex;flex-direction:column;gap:16px}
@@ -144,7 +195,7 @@
   .proj-act{display:flex;gap:10px;flex-wrap:wrap}
 
   .proj-stage{
-    position:relative;margin:calc(var(--pad) + 44px) var(--pad) var(--pad) 0;
+    position:relative;margin:calc(var(--pad) + 40px) var(--pad) var(--pad) 0;
     background:var(--bg);
     border:1px solid color-mix(in srgb,var(--fg) 22%,transparent);
     border-radius:14px;overflow:hidden;
@@ -155,12 +206,13 @@
     display:flex;justify-content:space-between;align-items:center;
     border-bottom:1px solid color-mix(in srgb,var(--fg) 14%,transparent);
     padding:10px 16px;
-    font-size:11px;font-weight:700;letter-spacing:.26em;text-transform:uppercase;opacity:.95;
+    font-family:var(--mono);font-size:10.5px;font-weight:700;
+    letter-spacing:.24em;text-transform:uppercase;opacity:.95;
   }
   .stage-head .name{opacity:.65}
   .head-right{display:flex;align-items:center;gap:12px}
   .fs-btn{
-    font-family:inherit;font-weight:700;font-size:11px;letter-spacing:.18em;text-transform:uppercase;
+    font-family:var(--mono);font-weight:700;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;
     background:transparent;color:var(--fg);
     border:1px solid color-mix(in srgb,var(--fg) 45%,transparent);
     padding:6px 14px;cursor:pointer;
@@ -173,7 +225,36 @@
   .page-foot{
     position:absolute;left:var(--pad);right:var(--pad);bottom:14px;z-index:3;
     display:flex;justify-content:space-between;
-    font-size:11px;font-weight:700;letter-spacing:.28em;text-transform:uppercase;opacity:.45;
+    font-family:var(--mono);font-size:10.5px;font-weight:700;
+    letter-spacing:.26em;text-transform:uppercase;opacity:.45;
+  }
+
+  /* ============ P4 结尾页 ============ */
+  .end-inner{
+    height:100%;padding:calc(var(--pad) + 34px) var(--pad) var(--pad);
+    display:flex;flex-direction:column;justify-content:center;align-items:center;
+    text-align:center;position:relative;z-index:2;
+  }
+  .end-title{
+    font-family:var(--display);font-weight:400;
+    font-size:clamp(76px,20vh,220px);line-height:.9;text-transform:uppercase;
+    margin-top:2.5vh;
+  }
+  .end-title .outline{color:transparent;-webkit-text-stroke:.02em var(--fg)}
+  .end-cn{
+    font-family:var(--cn-disp);font-size:clamp(22px,3.4vh,32px);letter-spacing:.3em;
+    margin-top:3vh;
+  }
+  .end-note{
+    font-size:clamp(13px,1.8vh,15px);font-weight:300;letter-spacing:.08em;
+    opacity:.6;margin-top:1.6vh;
+  }
+  .end-act{margin-top:4.5vh;display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
+  .end-foot{
+    position:absolute;left:var(--pad);right:var(--pad);bottom:22px;
+    display:flex;justify-content:space-between;
+    font-family:var(--mono);font-size:10px;font-weight:700;
+    letter-spacing:.24em;text-transform:uppercase;opacity:.4;
   }
 
   /* ============ 全屏 ============ */
@@ -186,12 +267,17 @@
   /* ============ 窄屏 ============ */
   @media (max-width:900px){
     .proj{grid-template-columns:1fr;grid-template-rows:auto 1fr}
-    .proj-info{padding:64px var(--pad) 10px}
-    .proj h2{font-size:clamp(34px,6vh,52px)}
-    .proj-desc{margin:1.4vh 0;font-size:13px}
+    .proj-info{padding:60px var(--pad) 10px}
+    .big-num{font-size:clamp(90px,16vh,140px);top:-3vh;right:0}
+    .proj h2{font-size:clamp(36px,6vh,54px)}
+    .proj h2 .cn{font-size:clamp(15px,2.1vh,18px)}
+    .proj-desc{margin:1.4vh 0;font-size:12.5px;line-height:1.8}
     .meta{margin-top:1vh;gap:10px}
     .proj-stage{margin:10px var(--pad) 44px}
     .rail{display:none}
+    .vertical-cn{display:none}
+    .idx{grid-template-columns:2.4em 1fr auto;gap:.8em}
+    .idx-cn{display:none}
   }
 </style>
 </head>
@@ -203,26 +289,39 @@
 </header>
 
 <nav class="rail" id="rail">
-  <a href="#s0" data-i="0"><span>COVER</span><i></i></a>
-  <a href="#s1" data-i="1"><span>POP SHUTTER</span><i></i></a>
-  <a href="#s2" data-i="2"><span>MESS → CALM</span><i></i></a>
-  <a href="#s3" data-i="3"><span>ANXIETY TUG</span><i></i></a>
+  <a href="#s0"><span>COVER</span><i></i></a>
+  <a href="#s1"><span>POP SHUTTER</span><i></i></a>
+  <a href="#s2"><span>MESS → CALM</span><i></i></a>
+  <a href="#s3"><span>ANXIETY TUG</span><i></i></a>
+  <a href="#s4"><span>THE END</span><i></i></a>
 </nav>
 
 <main class="deck" id="deck">
 
   <!-- ============ 00 封面 ============ -->
   <section class="page cover" id="s0">
+    <div class="vertical-cn" aria-hidden="true">乱，然后静</div>
     <div class="cover-inner">
       <p class="kicker">THREE INTERACTIVE EXPERIMENTS · 三个对抗混乱的互动实验</p>
       <h1>
         <span class="row">DON'T</span>
-        <span class="row">BE</span>
+        <span class="row outline">BE</span>
         <span class="row"><span class="mess">MESSY<s></s></span></span>
       </h1>
-      <div class="cover-sub">
+      <div class="cover-tagline">
         <span class="bar"></span>
         <p>乱是输入，平静是交互</p>
+      </div>
+      <div class="cover-index">
+        <a class="idx" href="#s1">
+          <span class="idx-no">01</span><span class="idx-en">POP SHUTTER</span><span class="idx-cn">波普快门</span><span class="idx-go">进入 →</span>
+        </a>
+        <a class="idx" href="#s2">
+          <span class="idx-no">02</span><span class="idx-en">MESS → CALM</span><span class="idx-cn">从混乱到平静</span><span class="idx-go">进入 →</span>
+        </a>
+        <a class="idx" href="#s3">
+          <span class="idx-no">03</span><span class="idx-en">ANXIETY TUG</span><span class="idx-cn">焦虑拉扯</span><span class="idx-go">进入 →</span>
+        </a>
       </div>
       <div class="cover-meta">
         <span>POP SHUTTER / MESS-TO-CALM / ANXIETY TUG</span>
@@ -235,7 +334,8 @@
   <!-- ============ 01 POP SHUTTER ============ -->
   <section class="page proj" id="s1">
     <div class="proj-info">
-      <p class="no-line">PROJECT 01 / 03</p>
+      <div class="big-num" aria-hidden="true">01</div>
+      <p class="kicker">PROJECT 01 · CAMERA VS CHAOS</p>
       <h2>POP<br>SHUTTER<span class="cn">波普快门 · 快门替你冷静</span></h2>
       <p class="proj-desc">
         打开摄像头，画面被实时渲染成沃霍尔式波普宫格；右侧的<b>焦躁指数</b>持续监测你的头动与微表情——
@@ -249,7 +349,7 @@
         <div class="proj-act">
           <a class="btn" href="https://github.com/cyfdazuiwa/pop-shutter" target="_blank" rel="noopener">GITHUB ↗</a>
         </div>
-        <p class="hint">※ 需要摄像头权限 · 需通过本地服务打开（双击 start_demo.command）· 在画面中允许摄像头后晃一晃试试</p>
+        <p class="hint">※ 需要摄像头权限 · 本地打开请双击 start_demo.command · 在画面中允许摄像头后晃一晃试试</p>
       </div>
     </div>
     <div class="proj-stage">
@@ -265,7 +365,8 @@
   <!-- ============ 02 MESS → CALM ============ -->
   <section class="page proj" id="s2">
     <div class="proj-info">
-      <p class="no-line">PROJECT 02 / 03</p>
+      <div class="big-num" aria-hidden="true">02</div>
+      <p class="kicker">PROJECT 02 · TIDY THE LINES</p>
       <h2>MESS →<br>CALM<span class="cn">从混乱到平静 · 三幕小游戏</span></h2>
       <p class="proj-desc">
         三幕交互，一条从乱到静的路：第一幕<b>点击红色 calm</b>，从乱麻中找到平静；
@@ -295,7 +396,8 @@
   <!-- ============ 03 ANXIETY TUG ============ -->
   <section class="page proj" id="s3">
     <div class="proj-info">
-      <p class="no-line">PROJECT 03 / 03</p>
+      <div class="big-num" aria-hidden="true">03</div>
+      <p class="kicker">PROJECT 03 · BACK TO CENTER</p>
       <h2>ANXIETY<br>TUG<span class="cn">焦虑拉扯 · 把注意力拉回中心</span></h2>
       <p class="proj-desc">
         画布中央是黑色安全圈，你控制的<b>小红点</b>被四方涌来的蓝色波形不断向外拉扯——
@@ -322,6 +424,24 @@
     <div class="page-foot"><span>DON'T BE MESSY</span><span>03 — BACK TO CENTER</span></div>
   </section>
 
+  <!-- ============ 04 结尾 ============ -->
+  <section class="page" id="s4">
+    <div class="end-inner">
+      <p class="kicker">DON'T BE MESSY · THE END</p>
+      <div class="end-title">THE <span class="outline">END</span></div>
+      <p class="end-cn">所有杂乱，归于安静。</p>
+      <p class="end-note">感谢你滚到这里。三个小世界，一直都在。</p>
+      <div class="end-act">
+        <a class="btn" href="#s0">BACK TO TOP ↑</a>
+        <a class="btn ghost" href="https://github.com/cyfdazuiwa/dont-be-messy" target="_blank" rel="noopener">GITHUB ↗</a>
+      </div>
+    </div>
+    <div class="end-foot">
+      <span>© 2026 DON'T BE MESSY</span>
+      <span>乱是输入 · 平静是交互</span>
+    </div>
+  </section>
+
 </main>
 
 <script>
@@ -345,16 +465,13 @@
   }, {root: deck, threshold: 0.55});
   pages.forEach(p => io.observe(p));
 
-  // 支持 #s0~#s3 直接定位（滚动容器在 .deck 内，锚点需手动落位）
+  // 支持 #s0~#s4 直接定位（滚动容器在 .deck 内，锚点需手动落位）
   function jumpToHash(){
     const el = document.querySelector(location.hash || null);
     if (el && pages.includes(el)) deck.scrollTop = el.offsetTop;
   }
   window.addEventListener('load', jumpToHash);
   window.addEventListener('hashchange', jumpToHash);
-
-  // 背景固定主题色（米白底 · 深色字），不再随作品变色
-  // （--bg / --fg 直接使用 :root 中的静态值）
 
   // 演示窗口全屏切换（退出全屏会重置内部滚动，需记录并恢复）
   const fsStages = [...document.querySelectorAll('[data-fs]')].map(btn => ({
